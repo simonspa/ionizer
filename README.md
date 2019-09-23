@@ -16,3 +16,5 @@ Nuclear Instruments and Methods in Physics Research A 533 (2004) 322–343
 here translated to C++
 - ionizer.cpp is without root, produces ion clusters in ionizer.dat
 - ionizer.cc with ROOT, produces ionizer.root
+
+![energy loss](tde.png "Energy loss in 150 um Si")
