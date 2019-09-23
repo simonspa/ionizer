@@ -11,10 +11,12 @@ http://prola.aps.org/abstract/RMP/v60/i3/p663_1
 and  
 M. Brigida, M.N. Mazzotti et al:  
 A new Monte Carlo code for full simulation of silicon strip detectors  
-Nuclear Instruments and Methods in Physics Research A 533 (2004) 322–343
+Nuclear Instruments and Methods in Physics Research A 533 (2004) 322–343![Alt text](/path/to/img.jpg "Optional title")
 
 here translated to C++
 - ionizer.cpp is without root, produces ion clusters in ionizer.dat
 - ionizer.cc with ROOT, produces ionizer.root
 
 ![energy loss](tde.png "Energy loss in 150 um Si")
+
+example plot: energy loss in 150 um Si
