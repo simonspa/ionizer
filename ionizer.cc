@@ -1,6 +1,13 @@
 
 // simulation of ionization by charged particle tracks in silicon
 
+// make ionizer
+
+// ionizer  -n 10100 -t 150
+
+// -n events
+// -t Si thickness in microns
+
 // History:
 
 // COVPRI.f calculates the primary collision cross section table for Si
@@ -34,6 +41,7 @@
 // Output files:
 // ionizer.root
 
+#include <cstdlib> // atoi
 #include <iostream> // cout
 #include <fstream> // files
 #include <sstream> // stringstream
@@ -95,9 +103,8 @@ ranlux24 rgen;
 uniform_real_distribution <double> unirnd( 0, 1 );
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-int main()
+int main( int argc, char* argv[] )
 {
-  // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // USER steering:
 
   bool ldb = 0; // debug flag
@@ -105,6 +112,16 @@ int main()
   unsigned nev = 10*1000;
 
   double tmic = 150; // [um] thickness
+
+  for( int i = 1; i < argc; ++i ) {
+
+    if( !strcmp( argv[i], "-n" ) )
+      nev = atoi( argv[++i] );
+
+    if( !strcmp( argv[i], "-t" ) )
+      tmic = atof( argv[++i] ); // [um]
+
+  } // argc
 
   // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
@@ -142,18 +159,27 @@ int main()
   TH1I hzz( "z", "z;depth z [#mum];steps", tmic, 0, tmic );
 
   TH2I * h2xy = new
-    TH2I( "xy","; X(#mum); Y(#mum)", 200, -100, 100, 200, -100, 100 );
+    TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]", 400, -200, 200, 400, -200, 200 );
+  TH2I * h2rz = new
+    TH2I( "rz","R-zclusters;z [#mum];R [#mum];clusters [eh-pairs]", tmic, 0, tmic, 200, 0, 200 );
 
   TH1I hde0( "de0", "step E loss;step E loss [eV];steps", 200, 0, 200 );
   TH1I hde1( "de1", "step E loss;step E loss [eV];steps", 100, 0, 5000 );
   TH1I hde2( "de2", "step E loss;step E loss [keV];steps", 200, 0, 20 );
   TH1I hlogde( "logde", "log step E loss;log_{10}(step E loss [eV]);steps", 160, 0, 8 );
   TH1I htet( "tet", "emission angle;emission angle [deg];steps", 180, 0, 90 );
-  TH1I hneh( "neh", "cluster neh;cluster eh [pairs];clusters", 200, 0, 200 );
+  TH1I hcleh( "cleh", "cluster neh;cluster eh [pairs];clusters", 800, 0, 800 );
   TH1I hscat( "scat", "scattering angle;scattering angle [deg];steps", 180, 0, 180 );
 
   TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*tmic*5, 0, 4*tmic*5 );
-  TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks", 5*0.35*tmic, 0, 5*0.35*tmic );
+  TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV",
+	     int(5*0.35*tmic), 0, int(5*0.35*tmic) );
+  TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta",
+	      int(5*0.35*tmic), 0, int(5*0.35*tmic) );
+  TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
+	      int(5*0.35*tmic), 0, int(5*0.35*tmic) );
+  TH1I hteh( "teh", "toal e-h;total charge [ke];tracks / 0.2 ke",
+	     int(25*0.1*tmic), 0, int(5*0.1*tmic) );
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // silicon:
@@ -169,6 +195,9 @@ int main()
 
   rgen.seed( time(NULL) ); // seconds since 1.1.1970
 
+  // on cmspixel:
+  //rgen.seed( 17 ); // long delta, Bragg-peak
+
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // INITIALIZE ENERGY BINS
 
@@ -176,7 +205,7 @@ int main()
   double u  = log(2.0) / n2;
   double um = exp(u);
   int ken  = log( 1839.0 / 1.5 ) / u; // intger
-  double Emin = 1839.0 / pow( 2, 1.0*ken/n2 );
+  double Emin = 1839.0 / pow( 2, ken/n2 ); // integer division intended
 
   // EMIN is chosen to give an E-value exactly at the K-shell edge, 1839 eV
 
@@ -188,7 +217,7 @@ int main()
   E[1] = Emin;
 
   for( unsigned j = 1; j < nume; ++j ) {
-    E[j+1] = E[j] * um;
+    E[j+1] = E[j] * um; // must agree with heps.tab
     dE[j]  = E[j+1] - E[j];
   }
 
@@ -262,8 +291,8 @@ int main()
 
   } // HEPS.TAB
 
-  // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-  // READ INTEGRALS OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
+  //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+  // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
 
   double sig[7][lime];
 
@@ -547,6 +576,7 @@ int main()
     unsigned it = 0;
     unsigned nscat = 0; // elastic
     unsigned nloss = 0; // ionization
+    unsigned ndelta = 0;
     double tde = 0.0;
     unsigned meh = 0;
     vector <cluster> clusters;
@@ -574,9 +604,7 @@ int main()
       double gn = 1;
       double totsig[lime];
 
-      // GENERATE PARTICLE STEPs:
-
-      while(1) {
+      while(1) { // steps
 
 	if( pke < 0.9 * pkeprev ) { // update
 
@@ -643,17 +671,20 @@ int main()
 
 	    double sgg = E[j] * dfdE[j] * (-0.5) *
 	      log( epbe*epbe + pow( betasq * ep[2][j], 2 ) );
+
 	    double thet = atan( ep[2][j] * betasq / epbe );
 	    if( thet < 0 ) thet = thet + pi; // plausible-otherwise I"d have a jump
 	    // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
 
 	    double sgh = 0.0092456 * E[j]*E[j] * thet *
 	      ( betasq - ep[1][j] / ( pow( ep[1][j], 2 ) + pow( ep[2][j], 2 ) ) );
+
 	    sig[3][j] = sgg + sgh;
+
 	    double uef = 1 - E[j] * bemx;
 	    if( npm == 4 )
 	      uef = 1 +
-		pow( E[j] / ( pf - E[j] ), 2 ) -
+		pow( E[j] / ( pf - E[j] ), 2 ) +
 		pow( (gam-1) / gam * E[j]/pf, 2 ) -
 		( 2*gam-1 ) * E[j] / ( gam*gam * ( pf - E[j] ) );
 
@@ -680,12 +711,24 @@ int main()
 
 	    } // i
 
-	    tsig[5] += sig[5][j] * dE[j] / ( E[j]*E[j] );
+	    tsig[5] += sig[5][j] * dE[j] / ( E[j]*E[j] ); // running sum
 
 	    double HE2  = sig[5][j] * dec;
 	    H[j] = HE2 / ( E[j]*E[j] );
 	    stpw += H[j] * E[j] * dE[j]; // dE/dx
-
+	    /*
+	    if( ndelta == 0 )
+	      cout << j
+		   << "  " << E[j]
+		   << "  " << dfdE[j]
+		   << "  " << sgg
+		   << "  " << sgh
+		   << "  " << sig[1][j]
+		   << "  " << sig[3][j]
+		   << "  " << sig[4][j]
+		   << "  " << sig[5][j]
+		   << "  " << HE2 << endl; // compare Bichsel CONV-5000.OPA: agree
+	    */
 	    nlast = j;
 
 	  } // j
@@ -728,7 +771,7 @@ int main()
 	  pkeprev = pke;
 
 	  if( ldb )
-	    cout << "ev " << iev << " type " << npm << ", ekin " << pke << " MeV"
+	    cout << "  ev " << iev << " type " << npm << ", ekin " << pke*1e3 << " keV"
 		 << ", beta " << sqrt(betasq) << ", gam " << gam << endl
 		 << "  Emax " << Emax << ", nlast " << nlast << ", Elast " << E[nlast]
 		 << ", norm " << totsig[nlast] << endl
@@ -757,8 +800,6 @@ int main()
 
 	xx += xr*vect[0];
 	yy += xr*vect[1];
-
-	h2xy->Fill( xx*1e4, yy*1e4 );
 
 	++it;
 
@@ -839,7 +880,7 @@ int main()
 
 	    veh.pop();
 
-	    if( Eeh > 9e3 ) { // explicit DELTA RAY
+	    if( Eeh > 2e3 ) { // explicit DELTA RAY
 
 	      cout << "    delta " << Eeh*1e-3 << " keV" << endl;
 
@@ -855,6 +896,8 @@ int main()
 	      t.w = ww; // along z
 	      t.npm = 4; // e (or h)
 	      deltas.push(t); // beam particle is first "delta"
+
+	      ++ndelta;
 
 	      continue; // next ieh
 
@@ -891,7 +934,7 @@ int main()
 
 	  } // while veh
 
-	  hneh.Fill( neh+0.5 ); // per cluster
+	  hcleh.Fill( neh+0.5 ); // per cluster
 
 	  meh += neh;
 
@@ -910,12 +953,20 @@ int main()
 	    c.E = Eg; // [eV]
 	    clusters.push_back(c);
 
+	    h2xy->Fill( xx*1e4, yy*1e4, neh );
+	    h2rz->Fill( zz*1e4, sqrt( xx * xx + yy * yy ) * 1e4, neh );
+
 	  }
 
-	  // print 161 << iev << idel << zz*1e4 << pke*1e3 << tde*1e-3 << EG << neh << nscat << nloss << meh << ncl
-	  //161 format(    i6,  i4,   F7.1,   F13.3,    F8.1,   F9.1, i7, i7,    i7,    i8,  i7 )
-
 	  pke -= Eg*1E-6; // [MeV]
+
+	  if( ldb )
+	    cout << "    pke " << pke*1e3
+		 << " keV, z " << zz*1e4 << ", neh " << neh
+		 << ", steps " << it << ", ion " << nloss << ", elas " << nscat
+		 << ", cl " << clusters.size()
+		 << endl;
+
 	  if( pke < 1E-6 || resekin < 1E-6 ) {
 	    // cout << "###### NULL KINETIC ENERGY"
 	    break;
@@ -934,7 +985,6 @@ int main()
 
 	}
 	else { // ELASTIC SCATTERING: Gaussian scattering with Rossi formula
-
 
 	  ++nscat;
 
@@ -966,6 +1016,8 @@ int main()
 
       } // inside
 
+      pkeprev = 9e9; // update flag for next delta
+
     } // while deltas
     /*
     write( 69, * ) "ev " << iev << ncl << meh // event header
@@ -986,7 +1038,12 @@ int main()
 	 << endl;
 
     hncl.Fill( clusters.size() );
-    htde.Fill( tde*1e-3 );
+    htde.Fill( tde*1e-3 ); // [keV]
+    if( ndelta )
+      htde1.Fill( tde*1e-3 ); // [keV]
+    else
+      htde0.Fill( tde*1e-3 ); // [keV]
+    hteh.Fill( meh*1e-3 ); // [ke]
 
   } // events
 

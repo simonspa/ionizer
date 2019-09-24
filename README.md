@@ -17,6 +17,10 @@ here translated to C++
 - ionizer.cpp is without root, produces ion clusters in ionizer.dat
 - ionizer.cc with ROOT, produces ionizer.root
 
-example plot: energy loss in 150 um Si
+example plots: 5 GeV electrons passing 150 um Si
 
-![energy loss](tde.png "Energy loss in 150 um Si")
+![energy loss](teh.png "ionization in 150 um Si")
+
+![energy loss](xy.png "x-y ionization map")
+
+![energy loss](rz.png "R-z ionization map")

@@ -150,7 +150,7 @@ int main()
   double u  = log(2.0) / n2;
   double um = exp(u);
   int ken  = log( 1839.0 / 1.5 ) / u; // intger
-  double Emin = 1839.0 / pow( 2, 1.0*ken/n2 );
+  double Emin = 1839.0 / pow( 2, ken/n2 ); // integer division intended
 
   // EMIN is chosen to give an E-value exactly at the K-shell edge, 1839 eV
 
@@ -159,7 +159,7 @@ int main()
   E[1] = Emin;
 
   for( unsigned j = 1; j < nume; ++j ) {
-    E[j+1] = E[j] * um;
+    E[j+1] = E[j] * um; // must agree with heps.tab
     dE[j]  = E[j+1] - E[j];
     H[j]   = 0.0;
   }
@@ -614,7 +614,7 @@ int main()
 	    double uef = 1 - E[j] * bemx;
 	    if( npm == 4 )
 	      uef = 1 +
-		pow( E[j] / ( pf - E[j] ), 2 ) -
+		pow( E[j] / ( pf - E[j] ), 2 ) +
 		pow( (gam-1) / gam * E[j]/pf, 2 ) -
 		( 2*gam-1 ) * E[j] / ( gam*gam * ( pf - E[j] ) );
 
