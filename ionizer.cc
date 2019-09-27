@@ -2,11 +2,10 @@
 // simulation of ionization by charged particle tracks in silicon
 
 // make ionizer
-
-// ionizer  -n 10100 -t 150
-
+// ionizer  -n 10100 -t 150 -e 5000
 // -n events
 // -t Si thickness in microns
+// -e kinetic energy [MeV]
 
 // History:
 
@@ -113,6 +112,8 @@ int main( int argc, char* argv[] )
 
   double tmic = 150; // [um] thickness
 
+  double Ekin0 = 5000; // [MeV] kinetic energy
+
   for( int i = 1; i < argc; ++i ) {
 
     if( !strcmp( argv[i], "-n" ) )
@@ -121,15 +122,18 @@ int main( int argc, char* argv[] )
     if( !strcmp( argv[i], "-t" ) )
       tmic = atof( argv[++i] ); // [um]
 
+    if( !strcmp( argv[i], "-e" ) )
+      Ekin0 = atof( argv[++i] ); // [MeV]
+
   } // argc
 
   // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
   unsigned npm0 = 4; // e
 
-  double Ekin0 = 5000; // [MeV] kinetic energy
-
   double temp = 300; // [K]
+
+  double explicit_delta_energy_cut_keV = 5;
 
   cout << "  particle type    " << npm0 << endl;
   cout << "  kinetic energy   " << Ekin0 << " MeV" << endl;
@@ -167,17 +171,22 @@ int main( int argc, char* argv[] )
   TH1I hde1( "de1", "step E loss;step E loss [eV];steps", 100, 0, 5000 );
   TH1I hde2( "de2", "step E loss;step E loss [keV];steps", 200, 0, 20 );
   TH1I hlogde( "logde", "log step E loss;log_{10}(step E loss [eV]);steps", 160, 0, 8 );
-  TH1I htet( "tet", "emission angle;emission angle [deg];steps", 180, 0, 90 );
+  TH1I htet( "tet", "emission angle;emission angle [deg];inelasic steps", 180, 0, 90 );
   TH1I hcleh( "cleh", "cluster neh;cluster eh [pairs];clusters", 800, 0, 800 );
-  TH1I hscat( "scat", "scattering angle;scattering angle [deg];steps", 180, 0, 180 );
+  TH1I hscat( "scat", "scattering angle;scattering angle [deg];elastic steps", 180, 0, 180 );
 
   TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*tmic*5, 0, 4*tmic*5 );
+
+  double lastbin = 5*0.35*tmic; // 350 eV/micron
+  if( Ekin0 < 1.1 )
+    lastbin = 1.05*Ekin0*1e3; // [keV]
   TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV",
-	     int(5*0.35*tmic), 0, int(5*0.35*tmic) );
+	     int(lastbin), 0, int(lastbin) );
   TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta",
-	      int(5*0.35*tmic), 0, int(5*0.35*tmic) );
+	      int(lastbin), 0, int(lastbin) );
   TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
-	      int(5*0.35*tmic), 0, int(5*0.35*tmic) );
+	      int(lastbin), 0, int(lastbin) );
+
   TH1I hteh( "teh", "toal e-h;total charge [ke];tracks / 0.2 ke",
 	     int(25*0.1*tmic), 0, int(5*0.1*tmic) );
 
@@ -603,6 +612,9 @@ int main( int argc, char* argv[] )
       double xlel = 1;
       double gn = 1;
       double totsig[lime];
+      double zmax = 0;
+
+      cout << "    delta " << pke*1e3 << " keV";
 
       while(1) { // steps
 
@@ -796,6 +808,8 @@ int main( int argc, char* argv[] )
 
 	hzz.Fill( zz*1e4 );
 
+	if( zz > zmax ) zmax = zz;
+
 	if( zz < 0 || zz > thck ) break;
 
 	xx += xr*vect[0];
@@ -816,8 +830,6 @@ int main( int argc, char* argv[] )
 
 	  double Eg = E[je-1] + ( E[je] - E[je-1] ) * unirnd(rgen); // [eV]
 
-	  tde += Eg; // [eV]
-
 	  hde0.Fill( Eg );
 	  hde1.Fill( Eg );
 	  hde2.Fill( Eg*1e-3 );
@@ -825,9 +837,9 @@ int main( int argc, char* argv[] )
 
 	  double resekin = pke - Eg*1E-6; // [ MeV]
 
-	  // cut off: [MeV]
+	  // cut off for further movement: [MeV]
 
-	  if( resekin < 0.002 ) {
+	  if( resekin < 0.005 ) {
 
 	    // cout << "@@@ NEG RESIDUAL ENERGY" << pke*1e3 << Eg*1e-3 << resekin*1e-3
 	    Eg = pke*1E6; // [eV]
@@ -835,6 +847,9 @@ int main( int argc, char* argv[] )
 	    // cout << "LAST ENERGY LOSS" << Eg << resekin
 
 	  }
+
+	  if( Eg < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
+	    tde += Eg; // [eV]
 
 	  // emission angle from delta:
 
@@ -880,9 +895,7 @@ int main( int argc, char* argv[] )
 
 	    veh.pop();
 
-	    if( Eeh > 2e3 ) { // explicit DELTA RAY
-
-	      cout << "    delta " << Eeh*1e-3 << " keV" << endl;
+	    if( Eeh > explicit_delta_energy_cut_keV*1e3 ) {
 
 	      // put track on stack
 
@@ -968,7 +981,7 @@ int main( int argc, char* argv[] )
 		 << endl;
 
 	  if( pke < 1E-6 || resekin < 1E-6 ) {
-	    // cout << "###### NULL KINETIC ENERGY"
+	    // cout << "  absorbed" << endl;
 	    break;
 	  }
 
@@ -1014,7 +1027,9 @@ int main( int argc, char* argv[] )
 
 	} // elastic
 
-      } // inside
+      } // inside steps
+
+      cout << ", zmax " << zmax*1e4 << " um" << endl;
 
       pkeprev = 9e9; // update flag for next delta
 
@@ -1038,7 +1053,7 @@ int main( int argc, char* argv[] )
 	 << endl;
 
     hncl.Fill( clusters.size() );
-    htde.Fill( tde*1e-3 ); // [keV]
+    htde.Fill( tde*1e-3 ); // [keV] energy conservation - binding energy
     if( ndelta )
       htde1.Fill( tde*1e-3 ); // [keV]
     else
