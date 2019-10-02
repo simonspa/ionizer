@@ -2,9 +2,13 @@
 // simulation of ionization by charged particle tracks in silicon
 
 // make ionizer
-// ionizer  -n 10100 -t 150 -e 5000
+
+// ionizer  -n 10100 -t 150 -w 25 -f 0.05 -e 5000
+
 // -n events
-// -t Si thickness in microns
+// -t Si thickness [um]
+// -w pixel width [um]
+// -f threshold [fraction]
 // -e kinetic energy [MeV]
 
 // History:
@@ -114,6 +118,10 @@ int main( int argc, char* argv[] )
 
   double Ekin0 = 5000; // [MeV] kinetic energy
 
+  double width = 25; // [um] pixels size
+
+  double thr = 0.05; // fraction of peak signal
+
   for( int i = 1; i < argc; ++i ) {
 
     if( !strcmp( argv[i], "-n" ) )
@@ -125,15 +133,25 @@ int main( int argc, char* argv[] )
     if( !strcmp( argv[i], "-e" ) )
       Ekin0 = atof( argv[++i] ); // [MeV]
 
+    if( !strcmp( argv[i], "-f" ) )
+      thr = atof( argv[++i] ); // [fraction]
+
+    if( !strcmp( argv[i], "-w" ) )
+      width = atof( argv[++i] ); // [um]
+
   } // argc
+
+  thr = thr*75*tmic; // [eh]
+
+  double tilt = atan( width / tmic ); // [rad]
+
+  double explicit_delta_energy_cut_keV = 5;
 
   // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
   unsigned npm0 = 4; // e
 
   double temp = 300; // [K]
-
-  double explicit_delta_energy_cut_keV = 5;
 
   cout << "  particle type    " << npm0 << endl;
   cout << "  kinetic energy   " << Ekin0 << " MeV" << endl;
@@ -144,8 +162,8 @@ int main( int argc, char* argv[] )
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
   double pi = 3.1415926536;
-  double twopi = 2*pi;
   double wt = 180/pi;
+  double twopi = 2*pi;
   double elmm = 0.51099906; // e mass [MeV]
   double twome = 2e6*elmm; // [eV]
   double Ry = 13.6056981;
@@ -163,9 +181,11 @@ int main( int argc, char* argv[] )
   TH1I hzz( "z", "z;depth z [#mum];steps", tmic, 0, tmic );
 
   TH2I * h2xy = new
-    TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]", 400, -200, 200, 400, -200, 200 );
+    TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]",
+	  400, -200, 200, 400, -200, 200 );
   TH2I * h2rz = new
-    TH2I( "rz","R-zclusters;z [#mum];R [#mum];clusters [eh-pairs]", tmic, 0, tmic, 200, 0, 200 );
+    TH2I( "rz","R-zclusters;z [#mum];R [#mum];clusters [eh-pairs]",
+	  tmic, 0, tmic, 200, 0, 200 );
 
   TH1I hde0( "de0", "step E loss;step E loss [eV];steps", 200, 0, 200 );
   TH1I hde1( "de1", "step E loss;step E loss [eV];steps", 100, 0, 5000 );
@@ -173,7 +193,8 @@ int main( int argc, char* argv[] )
   TH1I hlogde( "logde", "log step E loss;log_{10}(step E loss [eV]);steps", 160, 0, 8 );
   TH1I htet( "tet", "emission angle;emission angle [deg];inelasic steps", 180, 0, 90 );
   TH1I hcleh( "cleh", "cluster neh;cluster eh [pairs];clusters", 800, 0, 800 );
-  TH1I hscat( "scat", "scattering angle;scattering angle [deg];elastic steps", 180, 0, 180 );
+  TH1I hscat( "scat", "scattering angle;scattering angle [deg];elastic steps",
+	      180, 0, 180 );
 
   TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*tmic*5, 0, 4*tmic*5 );
 
@@ -181,14 +202,32 @@ int main( int argc, char* argv[] )
   if( Ekin0 < 1.1 )
     lastbin = 1.05*Ekin0*1e3; // [keV]
   TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV",
-	     int(lastbin), 0, int(lastbin) );
+	     max(100,int(lastbin)), 0, int(lastbin) );
   TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta",
-	      int(lastbin), 0, int(lastbin) );
+	      max(100,int(lastbin)), 0, int(lastbin) );
   TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
-	      int(lastbin), 0, int(lastbin) );
+	      max(100,int(lastbin)), 0, int(lastbin) );
 
   TH1I hteh( "teh", "toal e-h;total charge [ke];tracks / 0.2 ke",
-	     int(25*0.1*tmic), 0, int(5*0.1*tmic) );
+	     max(100,int(25*0.1*tmic)), 0, max(1,int(5*0.1*tmic)) );
+
+  TH1I heta0( "eta0", "eta;eta;tracks", 200, -1, 1 );
+  TProfile eta0vsym( "eta0vsym", "eta vs track;track y [#mum];<eta>",
+		     200, -0.5*width, 0.5*width );
+  TH1I hdy0( "dy0", "dy0;dy [#mum];tracks", 200, -width, width );
+  TH1I hdy0c( "dy0c", "dy0 Landau peak;dy [#mum];tracks", 200, -width, width );
+
+  TH1I heta1( "eta1", "eta threshold;eta;tracks", 201, -1.005, 1.005 );
+  TProfile eta1vsym( "eta1vsym", "eta threshold vs track;track y [#mum];<eta>",
+		     200, -0.5*width, 0.5*width );
+  TH1I hdy1( "dy1", "dy threshold;dy [#mum];tracks", 200, -width, width );
+  TH1I hdy1c( "dy1c", "dy threshold Landau peak;dy [#mum];tracks", 200, -width, width );
+
+  TH1I heta2( "eta2", "eta threshold;eta;tracks", 201, -1.005, 1.005 );
+  TProfile eta2vsym( "eta2vsym", "eta threshold vs track;track y [#mum];<eta>",
+		     200, -0.5*width, 0.5*width );
+  TH1I hdy2( "dy2", "dy threshold;dy [#mum];tracks", 200, -width, width );
+  TH1I hdy2c( "dy2c", "dy threshold Landau peak;dy [#mum];tracks", 200, -width, width );
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // silicon:
@@ -571,14 +610,16 @@ int main( int argc, char* argv[] )
 
     // put track on stack
 
+    double ym = width * ( unirnd(rgen) - 0.5 ); // [um] -w/2..w/2 track mid
+
     delta t;
     t.E = Ekin0; // [MeV]
-    t.x = 0;
-    t.y = 0;
+    t.x = 0; // [cm]
+    t.y = ( ym - 0.5*width ) * 1e-4; // entry point;
     t.z = 0;
     t.u = 0;
-    t.v = 0;
-    t.w = 1; // along z
+    t.v = sin(tilt);
+    t.w = cos(tilt); // along z
     t.npm = npm0;
     deltas.push(t); // beam particle is first "delta"
 
@@ -589,7 +630,8 @@ int main( int argc, char* argv[] )
     double tde = 0.0;
     unsigned meh = 0;
     vector <cluster> clusters;
-
+    double qp = 0;
+    double qm = 0;
     double pkeprev = 9e9; // update flag
 
     while( ! deltas.empty() ) {
@@ -621,7 +663,7 @@ int main( int argc, char* argv[] )
 	if( pke < 0.9 * pkeprev ) { // update
 
 	  double zi = 1.0;
-	  double ptm = elmm; // e 0.51100
+	  double ptm = elmm; // e 0.51100 MeV
 	  if(      npm == 1 ) ptm = 938.2723; // proton
 	  else if( npm == 2 ) ptm = 139.578; // pion
 	  else if( npm == 3 ) ptm = 493.67; // K
@@ -853,11 +895,38 @@ int main( int argc, char* argv[] )
 
 	  // emission angle from delta:
 
-	  //double sint = sqrt( Eg*1e-6 / pke ); // Mazziotta
-	  //double cost = sqrt( 1 - sint*sint );
-	  double cost = sqrt( Eg / (twome + Eg) ); // M. Swartz
+	  // PRIMARY SCATTERING ANGLE:
+	  // SINT = SQRT(ER*1.E-6/PPKE) ! Mazziotta = deflection angle
+          // COST = SQRT(1.-SINT*SINT)
+	  // STORE INFORMATION ABOUT DELTA-RAY:
+	  // SINT = COST ! flip
+	  // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / pke ) ! wrong
+
+	  //double cost = sqrt( Eg / (twome + Eg) ); // M. Swartz
+	  double cost = sqrt( Eg / (twome + Eg) * ( pke + 2*elmm ) / pke ); // Penelope, Geant4
 	  double sint = sqrt( 1 - cost*cost ); // mostly 90 deg
 	  double phi = 2*pi*unirnd(rgen);
+
+	  // G4PenelopeIonisationModel.cc
+
+	  // rb = kineticEnergy + 2*electron_mass_c2;
+
+	  // kineticEnergy1 = kineticEnergy - deltaE;
+	  // cosThetaPrimary = sqrt( kineticEnergy1 * rb /
+	  // ( kineticEnergy * ( rb - deltaE ) ) );
+
+	  // cosThetaSecondary = sqrt( deltaE * rb /
+	  // ( kineticEnergy * ( deltaE + 2*electron_mass_c2 ) ) );
+
+	  // penelope.f90
+	  // Energy and scattering angle ( primary electron ).
+	  // EP = E - DE
+	  // TME = 2 * ME
+	  // RB = E + TME
+	  // CDT = SQRT( EP * RB / ( E * ( RB - DE ) ) )
+
+	  // emission angle of the delta ray:
+	  // CDTS = SQRT( DE * RB / ( E * ( DE + TME ) ) ) // like Geant
 
 	  vector <double> din(3);
 	  din[0] = sint*cos(phi);
@@ -968,7 +1037,10 @@ int main( int argc, char* argv[] )
 
 	    h2xy->Fill( xx*1e4, yy*1e4, neh );
 	    h2rz->Fill( zz*1e4, sqrt( xx * xx + yy * yy ) * 1e4, neh );
-
+	    if( yy > 0 ) // charge sharing
+	      qp += neh;
+	    else
+	      qm += neh;
 	  }
 
 	  pke -= Eg*1E-6; // [MeV]
@@ -1059,6 +1131,48 @@ int main( int argc, char* argv[] )
     else
       htde0.Fill( tde*1e-3 ); // [keV]
     hteh.Fill( meh*1e-3 ); // [ke]
+
+    double eta = (qp-qm)/(qp+qm);
+    heta0.Fill( eta );
+    eta0vsym.Fill( ym, eta );
+
+    double cog = ( -0.5*width*qm + 0.5*width*qp )/(qp+qm); // = 0.5*width*eta
+    double dy = cog - ym;
+    hdy0.Fill( dy );
+    if( meh < 100*tmic )
+      hdy0c.Fill( dy );
+
+    // threshold:
+
+    if( qp < thr )
+      qp = 0;
+    if( qm < thr )
+      qm = 0;
+
+    eta = (qp-qm)/(qp+qm);
+    heta1.Fill( eta );
+    eta1vsym.Fill( ym, eta );
+
+    cog = ( -0.5*width*qm + 0.5*width*qp )/(qp+qm); // = 0.5*width*eta
+    dy = cog - ym;
+    hdy1.Fill( dy );
+    if( meh < 100*tmic )
+      hdy1c.Fill( dy );
+
+    if( qp < 2*thr )
+      qp = 0;
+    if( qm < 2*thr )
+      qm = 0;
+
+    eta = (qp-qm)/(qp+qm);
+    heta2.Fill( eta );
+    eta2vsym.Fill( ym, eta );
+
+    cog = ( -0.5*width*qm + 0.5*width*qp )/(qp+qm); // = 0.5*width*eta
+    dy = cog - ym;
+    hdy2.Fill( dy );
+    if( meh < 100*tmic )
+      hdy2c.Fill( dy );
 
   } // events
 
