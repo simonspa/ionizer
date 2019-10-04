@@ -93,7 +93,10 @@ int main()
 {
   double pi = 3.1415926536;
   double elmm = 0.51099906; // e mass [MeV]
+  double elm = 1e6 * elmm; // me [eV]
+  double twome = 2*elm; // [eV]
   double Ry = 13.6056981;
+  double fac = 8 * pi * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
 
   const unsigned lime = 1251; // see HEPS.TAB
   unsigned nume = lime-1;
@@ -556,8 +559,7 @@ int main()
 	  double gam = pke / ptm + 1.0; // W = total energy / restmass
 	  double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma
 	  double betasq = bg*bg / ( 1 + bg*bg );
-	  double telm = 2.0 * elmm; // 2*me
-	  double Emax = ptm * ( gam*gam - 1 ) / ( ptm/telm + telm/ptm + gam );
+	  double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam ); // bug fixed
 	  // Emax=maximum energyloss, see Uehling, also Sternheimer & Peierls Eq.(53)
 	  if( npm == 4 ) Emax = 0.5*pke;
 	  // maximum energy loss for incident electrons
@@ -567,12 +569,10 @@ int main()
 	  // Define parameters and calculate Inokuti"s sums,
 	  // Sect 3.3 in Rev Mod Phys 43, 297 (1971)
 
-	  double elm = 1e6 * elmm; // me [eV]
-	  double fac = 8.0 * pi * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
 	  double dec = zi*zi * atnu * fac / betasq;
 	  double bemx = betasq / Emax;
 	  double pf   = pke * 1e6;
-	  double tmcb = 2 * elm * betasq;
+	  double twombb = 2 * elm * betasq; // [eV]
 
 	  // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
 	  // sig(*,j) actually is E**2 * sigma(E)
@@ -593,7 +593,7 @@ int main()
 	    if( E[j] < 100.0 ) Q1 = pow( 0.025, 2 ) * Ry;
 	    if( E[j] <  11.9 ) Q1 = pow( xkmn[j], 2 ) * Ry;
 
-	    double qmin = E[j]*E[j] / tmcb; // TMCB = 2 mc**2 beta**2
+	    double qmin = E[j]*E[j] / twombb; // twombb = 2 m beta**2 [eV]
 
 	    if( E[j] < 11.9 && Q1 < qmin )
 	      sig[1][j] = 0;
@@ -669,11 +669,10 @@ int main()
 
 	  if( npm == 4 ) {  // ELECTRONS
 
-	    double bn = 2.61 * pow( ZA, 2.0/3.0 ) / (pke*1E6);
-	    gn = 2*bn;
+	    gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / pf;
 	    double E2 = 14.4e-14; // [MeV*cm]
 	    double FF = 0.5*pi * E2*E2 * ZA*ZA / (pke*pke);
-	    double S0EL = 2.0*FF / ( gn * ( 2 + gn ) ); // elastic total cross section  [cm2/atom]
+	    double S0EL = 2*FF / ( gn * ( 2 + gn ) ); // elastic total cross section  [cm2/atom]
 	    xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
 
 	  }
@@ -745,9 +744,9 @@ int main()
 
 	  // emission angle from delta:
 
+	  double cost = sqrt( Eg / (twome + Eg) * ( pke + twome ) / pke ); // Penelope, Geant4
+	  double sint = sqrt( 1 - cost*cost ); // mostly 90 deg
 	  double phi = 2*pi*unirnd(rgen);
-	  double sint = sqrt( Eg*1e-6 / pke );
-	  double cost = sqrt( 1 - sint*sint );
 
 	  vector <double> din(3);
 	  din[0] = sint*cos(phi);
@@ -865,18 +864,16 @@ int main()
 
 	  if( npm == 4 ) { // electrons, update elastic cross section at new pke
 
-	    double bn = 2.61 * pow( ZA, 2.0/3.0 ) / (pke*1E6);
-	    double gn = 2*bn;
+	    gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pke*1E6);
 	    double E2 = 14.4e-14; // [MeV*cm]
 	    double FF = 0.5*pi * E2*E2 * ZA*ZA / (pke*pke);
-	    double S0EL = 2.0*FF / ( gn * ( 2 + gn ) ); // elastic total cross section  [cm2/atom]
+	    double S0EL = 2*FF / ( gn * ( 2 + gn ) ); // elastic total cross section  [cm2/atom]
 	    xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
 
 	  }
 
 	}
 	else { // ELASTIC SCATTERING: Gaussian scattering with Rossi formula
-
 
 	  ++nscat;
 
