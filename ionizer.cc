@@ -3,12 +3,12 @@
 
 // make ionizer
 
-// ionizer  -n 10100 -t 150 -w 25 -f 0.05 -e 5000
+// time ionizer -n 10100 -t 150 -w 25 -c 0.05 -e 5000
 
 // -n events
 // -t Si thickness [um]
 // -w pixel width [um]
-// -f threshold [fraction]
+// -c pixel threshold cut [fraction]
 // -e kinetic energy [MeV]
 
 // History:
@@ -41,7 +41,7 @@
 // MACOM.TAB
 // EMERC.TAB
 
-// Output files:
+// Output file:
 // ionizer.root
 
 #include <cstdlib> // atoi
@@ -53,7 +53,7 @@
 #include <ctime>
 #include <stack>
 
-#include <TFile.h>
+#include <TFile.h> // ROOT
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile.h>
@@ -79,7 +79,7 @@ struct cluster {
   double E; // [eV] generating particle
 };
 
-// forward declaraions:
+// forward declarations:
 
 double alph1( double x );
 double alph2( double x );
@@ -101,7 +101,7 @@ const unsigned lep = 14;
 double EPP[lep], PM[lep], PL23[lep], PL1[lep], PK[lep];
 const unsigned nep = lep-1;
 
-ranlux24 rgen;
+ranlux24 rgen; // C++11 random number engine
 uniform_real_distribution <double> unirnd( 0, 1 );
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -121,6 +121,8 @@ int main( int argc, char* argv[] )
 
   double thr = 0.05; // fraction of peak signal
 
+  bool fast = 1; // default is fast
+
   for( int i = 1; i < argc; ++i ) {
 
     if( !strcmp( argv[i], "-n" ) )
@@ -133,7 +135,10 @@ int main( int argc, char* argv[] )
       Ekin0 = atof( argv[++i] ); // [MeV]
 
     if( !strcmp( argv[i], "-f" ) )
-      thr = atof( argv[++i] ); // [fraction]
+      fast = 0; // not fast, simulated each e-h pair
+
+    if( !strcmp( argv[i], "-c" ) )
+      thr = atof( argv[++i] ); // pixel threshold [relative]
 
     if( !strcmp( argv[i], "-w" ) )
       width = atof( argv[++i] ); // [um]
@@ -144,21 +149,13 @@ int main( int argc, char* argv[] )
 
   double tilt = atan( width / tmic ); // [rad]
 
-  double explicit_delta_energy_cut_keV = 5;
+  double explicit_delta_energy_cut_keV = 10;
 
   // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
   unsigned npm0 = 4; // e
 
   double temp = 300; // [K]
-
-  cout << "  particle type    " << npm0 << endl;
-  cout << "  kinetic energy   " << Ekin0 << " MeV" << endl;
-  cout << "  number of events " << nev << endl;
-  cout << "  thickness        " << tmic << " um" << endl;
-  cout << "  temperature      " << temp << " K" << endl;
-
-  // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
   double pi = 3.1415926536;
   double wt = 180/pi;
@@ -169,6 +166,14 @@ int main( int argc, char* argv[] )
   double Ry = 13.6056981;
   double fac = 8.0 * pi * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
   double log10 = log(10);
+
+  cout << "  particle type    " << npm0 << endl;
+  cout << "  kinetic energy   " << Ekin0 << " MeV" << endl;
+  cout << "  number of events " << nev << endl;
+  cout << "  thickness        " << tmic << " um" << endl;
+  cout << "  pixel width      " << width << " um" << endl;
+  cout << "  incident angle   " << tilt*wt << " deg" << endl;
+  cout << "  temperature      " << temp << " K" << endl;
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // book histos
@@ -204,10 +209,15 @@ int main( int argc, char* argv[] )
   TH1I hde0( "de0", "step E loss;step E loss [eV];steps", 200, 0, 200 );
   TH1I hde1( "de1", "step E loss;step E loss [eV];steps", 100, 0, 5000 );
   TH1I hde2( "de2", "step E loss;step E loss [keV];steps", 200, 0, 20 );
-  TH1I hlogde( "logde", "log step E loss;log_{10}(step E loss [eV]);steps", 160, 0, 8 );
-  TH1I htet( "tet", "emission angle;emission angle [deg];inelasic steps", 180, 0, 90 );
-  TH1I hcleh( "cleh", "cluster neh;cluster eh [pairs];clusters", 800, 0, 800 );
-  TH1I hscat( "scat", "scattering angle;scattering angle [deg];elastic steps",
+  TH1I hdel( "del", "log step E loss;log_{10}(step E loss [eV]);steps", 160, 0, 8 );
+  TH1I htet( "tet", "delta emission angle;delta emission angle [deg];inelasic steps", 180, 0, 90 );
+
+  TH1I hcleh( "cleh", "cluster neh;log_{10}(cluster eh [pairs]);clusters", 80, 0, 4 );
+  TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]); <w> [eV/pair]", 80, 0, 4 );
+  TH1I hreh( "reh", "eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
+  TH1I hzeh( "zeh", "Poisson eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
+
+  TH1I hscat( "scat", "elastic scattering angle;scattering angle [deg];elastic steps",
 	      180, 0, 180 );
 
   TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*tmic*5, 0, 4*tmic*5 );
@@ -222,10 +232,12 @@ int main( int argc, char* argv[] )
   TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
 	      max(100,int(lastbin)), 0, int(lastbin) );
 
-  TH1I hteh( "teh", "toal e-h;total charge [ke];tracks / 0.2 ke",
+  TH1I hteh( "teh", "total e-h;total charge [ke];tracks / 0.2 ke",
 	     max(100,int(25*0.1*tmic)), 0, max(1,int(5*0.1*tmic)) );
+  TH1I hrms( "rms", "RMS e-h;charge RMS [e];tracks",
+	     100, 0, 50*tmic );
 
-  TH1I heta0( "eta0", "eta;eta;tracks", 200, -1, 1 );
+  TH1I heta0( "eta0", "eta;eta;tracks", 201, -1.005, 1.005 );
   TProfile eta0vsym( "eta0vsym", "eta vs track;track y [#mum];<eta>",
 		     200, -0.5*width, 0.5*width );
   TH1I hdy0( "dy0", "dy0;dy [#mum];tracks", 200, -width, width );
@@ -643,6 +655,7 @@ int main( int argc, char* argv[] )
     unsigned ndelta = 0;
     double tde = 0.0;
     unsigned meh = 0;
+    unsigned sumeh2 = 0;
     vector <cluster> clusters;
     double qp = 0;
     double qm = 0;
@@ -668,9 +681,13 @@ int main( int argc, char* argv[] )
       double xlel = 1;
       double gn = 1;
       double totsig[lime];
-      double zmax = 0;
+      double zmax = zz;
 
-      cout << "    delta " << pke*1e3 << " keV";
+      cout << "    delta " << pke*1e3 << " keV"
+	   << ", cost " << t.w
+	   << ", u " << t.u
+	   << ", v " << t.v
+	   << ", z " << zz*1e4;
 
       while(1) { // steps
 
@@ -858,6 +875,9 @@ int main( int argc, char* argv[] )
 
 	zz += xr*vect[2];
 
+	if( ldb && pke < 1 )
+	  cout << "step " << xr*1e4 << ", z " << zz*1e4 << endl;
+
 	hzz.Fill( zz*1e4 );
 
 	if( zz > zmax ) zmax = zz;
@@ -885,13 +905,13 @@ int main( int argc, char* argv[] )
 	  hde0.Fill( Eg );
 	  hde1.Fill( Eg );
 	  hde2.Fill( Eg*1e-3 );
-	  hlogde.Fill( log(Eg)/log10 );
+	  hdel.Fill( log(Eg)/log10 );
 
 	  double resekin = pke - Eg*1E-6; // [ MeV]
 
 	  // cut off for further movement: [MeV]
 
-	  if( resekin < 0.005 ) {
+	  if( resekin < 0.00999 ) {
 
 	    // cout << "@@@ NEG RESIDUAL ENERGY" << pke*1e3 << Eg*1e-3 << resekin*1e-3
 	    Eg = pke*1E6; // [eV]
@@ -913,7 +933,7 @@ int main( int argc, char* argv[] )
 	  // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / pke ) ! wrong
 
 	  //double cost = sqrt( Eg / (twome + Eg) ); // M. Swartz
-	  double cost = sqrt( Eg / (twome + Eg) * ( pke + twome ) / pke ); // Penelope, Geant4
+	  double cost = sqrt( Eg / (twome + Eg) * ( pke + twome*1e-6 ) / pke ); // Penelope, Geant4
 	  double sint = sqrt( 1 - cost*cost ); // mostly 90 deg
 	  double phi = 2*pi*unirnd(rgen);
 
@@ -976,7 +996,7 @@ int main( int argc, char* argv[] )
 
 	    if( Eeh > explicit_delta_energy_cut_keV*1e3 ) {
 
-	      // put track on stack
+	      // put delta on stack:
 
 	      delta t;
 	      t.E = Eeh*1E-6; // Ekin [MeV]
@@ -985,9 +1005,9 @@ int main( int argc, char* argv[] )
 	      t.z = zz;
 	      t.u = uu;
 	      t.v = vv;
-	      t.w = ww; // along z
-	      t.npm = 4; // e (or h)
-	      deltas.push(t); // beam particle is first "delta"
+	      t.w = ww;
+	      t.npm = 4; // e
+	      deltas.push(t);
 
 	      ++ndelta;
 
@@ -995,9 +1015,9 @@ int main( int argc, char* argv[] )
 
 	    } // new delta
 
-	    // slow down low energy e and h:
+	    // slow down low energy e and h: 95% of CPU time
 
-	    while( Eeh > Ethr ) {
+	    while( fast == 0 && Eeh > Ethr ) {
 
 	      double pion = 1 / ( 1 + aaa*105/twopi * sqrt(Eeh-eom0) / pow( Eeh - Ethr, 3.5 ) );
 	      // for e and h
@@ -1024,11 +1044,12 @@ int main( int argc, char* argv[] )
 
 	    } // while Eeh
 
+	    neh += Eeh / 3.645; // quick
+
 	  } // while veh
 
-	  hcleh.Fill( neh+0.5 ); // per cluster
-
 	  meh += neh;
+	  sumeh2 += neh*neh;
 
 	  //cout << "  dE " << Eg << " eV, neh " << neh << endl;
 
@@ -1055,11 +1076,24 @@ int main( int argc, char* argv[] )
 	      qp += neh;
 	    else
 	      qm += neh;
-	  }
+
+	    if( pke > 0.99*Ekin0 ) { // stopping deltas give ugly spike
+	      hcleh.Fill( log(neh)/log10 ); // per cluster
+	      hreh.Fill( neh/Eg );
+	      wvse.Fill( log(Eg)/log10, Eg/neh );
+	    }
+
+	    // pixelav:
+
+	    poisson_distribution <int> poisson(Eg/3.645);
+	    int keh = poisson(rgen);
+	    hzeh.Fill( keh/Eg );
+
+	  } // neh
 
 	  pke -= Eg*1E-6; // [MeV]
 
-	  if( ldb )
+	  if( ldb && pke < 1 )
 	    cout << "    pke " << pke*1e3
 		 << " keV, z " << zz*1e4 << ", neh " << neh
 		 << ", steps " << it << ", ion " << nloss << ", elas " << nscat
@@ -1144,6 +1178,7 @@ int main( int argc, char* argv[] )
     else
       htde0.Fill( tde*1e-3 ); // [keV]
     hteh.Fill( meh*1e-3 ); // [ke]
+    hrms.Fill( sqrt(sumeh2) );
 
     double eta = (qp-qm)/(qp+qm);
     heta0.Fill( eta );
@@ -1171,6 +1206,8 @@ int main( int argc, char* argv[] )
     hdy1.Fill( dy );
     if( meh < 100*tmic )
       hdy1c.Fill( dy );
+
+    // 2*threshold:
 
     if( qp < 2*thr )
       qp = 0;

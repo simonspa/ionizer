@@ -79,7 +79,7 @@ int main()
 		    "Zeff;log_{10}(Ekin [MeV]);Zeff",
 		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
   TProfile xmfpvse( "xmfpvse",
-		    "inelastic mean free path;log_{10}(Ekin [MeV]);inelastic mean feee path [#mum]",
+		    "inelastic mean free path;log_{10}(Ekin [MeV]);inelastic mean free path [#mum]",
 		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
   TProfile derdxvse( "derdxvse",
 		     "restricted energy loss;log_{10}(Ekin [MeV]);restricted energy loss [eV/um]",
@@ -91,7 +91,7 @@ int main()
 		   "tail interactions;log_{10}(Ekin [MeV]);tail interactions [1/#mum]",
 		   6*50+1, -3.01, 3.01 ); // 50 steps/decade
   TProfile devse( "devse",
-		  "energy loss per step;log_{10}(Ekin [MeV]);energy loss [eV/step]",
+		  "energy loss per step;log_{10}(Ekin [MeV]);energy loss [eV/interaction]",
 		  6*50+1, -3.01, 3.01 ); // 50 steps/decade
 
   TProfile emfpvse( "emfpvse",
