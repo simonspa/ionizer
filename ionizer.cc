@@ -195,6 +195,9 @@ int main( int argc, char* argv[] )
 	    4*2*width, -width, width, 4*tmic, 0, tmic );
   }
 
+  TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]", 120, -2, 4 );
+  TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]", 120, -2, 4 );
+
   TH1I hstep5( "step5", "step length;step length [#mum];steps", 500, 0, 5 );
   TH1I hstep0( "step0", "step length;step length [#mum];steps", 500, 0, 0.05 );
   TH1I hzz( "z", "z;depth z [#mum];steps", tmic, 0, tmic );
@@ -213,7 +216,7 @@ int main( int argc, char* argv[] )
   TH1I htet( "tet", "delta emission angle;delta emission angle [deg];inelasic steps", 180, 0, 90 );
 
   TH1I hcleh( "cleh", "cluster neh;log_{10}(cluster eh [pairs]);clusters", 80, 0, 4 );
-  TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]); <w> [eV/pair]", 80, 0, 4 );
+  TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]);<w> [eV/pair]", 80, 0, 4 );
   TH1I hreh( "reh", "eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
   TH1I hzeh( "zeh", "Poisson eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
 
@@ -659,14 +662,14 @@ int main( int argc, char* argv[] )
     vector <cluster> clusters;
     double qp = 0;
     double qm = 0;
-    double pkeprev = 9e9; // update flag
+    double Ekprev = 9e9; // update flag
 
     while( ! deltas.empty() ) {
 
       delta t = deltas.top();
       deltas.pop();
 
-      double pke = t.E; // [MeV] kinetic energy
+      double Ek = t.E; // [MeV] kinetic energy
       double xx  = t.x;
       double yy  = t.y;
       double zz  = t.z;
@@ -682,8 +685,9 @@ int main( int argc, char* argv[] )
       double gn = 1;
       double totsig[lime];
       double zmax = zz;
+      double ptm = elmm; // e 0.51100 MeV
 
-      cout << "    delta " << pke*1e3 << " keV"
+      cout << "    delta " << Ek*1e3 << " keV"
 	   << ", cost " << t.w
 	   << ", u " << t.u
 	   << ", v " << t.v
@@ -691,21 +695,22 @@ int main( int argc, char* argv[] )
 
       while(1) { // steps
 
-	if( pke < 0.9 * pkeprev ) { // update
+	if( Ek < 0.9 * Ekprev ) { // update
 
 	  double zi = 1.0;
-	  double ptm = elmm; // e 0.51100 MeV
+	  ptm = elmm; // e 0.51100 MeV
 	  if(      npm == 1 ) ptm = 938.2723; // proton
 	  else if( npm == 2 ) ptm = 139.578; // pion
 	  else if( npm == 3 ) ptm = 493.67; // K
 	  else if( npm == 5 ) ptm = 105.65932; // mu
 
-	  double gam = pke / ptm + 1.0; // W = total energy / restmass
-	  double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma
+	  double gam = Ek / ptm + 1.0; // W = total energy / restmass
+	  double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma = p/m
+	  double pmom = ptm*bg; // [MeV/c]
 	  double betasq = bg*bg / ( 1 + bg*bg );
 	  double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam ); // bug fixed
-	  // Emax=maximum energyloss, see Uehling, also Sternheimer & Peierls Eq.(53)
-	  if( npm == 4 ) Emax = 0.5*pke;
+	  // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
+	  if( npm == 4 ) Emax = 0.5*Ek;
 	  // maximum energy loss for incident electrons
 
 	  Emax = 1e6 * Emax; // eV
@@ -715,7 +720,7 @@ int main( int argc, char* argv[] )
 
 	  double dec = zi*zi * atnu * fac / betasq;
 	  double bemx = betasq / Emax;
-	  double pf   = pke * 1e6;
+	  double EkeV   = Ek * 1e6; // [eV]
 	  double twombb = 2 * elm * betasq; // [eV]
 
 	  // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
@@ -766,9 +771,9 @@ int main( int argc, char* argv[] )
 	    double uef = 1 - E[j] * bemx;
 	    if( npm == 4 )
 	      uef = 1 +
-		pow( E[j] / ( pf - E[j] ), 2 ) +
-		pow( (gam-1) / gam * E[j]/pf, 2 ) -
-		( 2*gam-1 ) * E[j] / ( gam*gam * ( pf - E[j] ) );
+		pow( E[j] / ( EkeV - E[j] ), 2 ) +
+		pow( (gam-1) / gam * E[j]/EkeV, 2 ) -
+		( 2*gam-1 ) * E[j] / ( gam*gam * ( EkeV - E[j] ) );
 
 	    // uef from  Eqs. 9 & 2 in Uehling, Ann Rev Nucl Sci 4, 315 (1954)
 	    // if( j == 1) PRINT*, " uef=",UEF
@@ -831,28 +836,31 @@ int main( int argc, char* argv[] )
 
 	  // elastic:
 
-	  if( npm == 4 ) {  // ELECTRONS
+	  if( npm == 4 ) { // ELECTRONS
 
-	    gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / pf;
+	    //gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / EkeV; // Mazziotta
+	    gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
 	    double E2 = 14.4e-14; // [MeV*cm]
-	    double FF = 0.5*pi * E2*E2 * ZA*ZA / (pke*pke);
+	    double FF = 0.5*pi * E2*E2 * ZA*ZA / (Ek*Ek);
 	    double S0EL = 2*FF / ( gn * ( 2 + gn ) );
 	    // elastic total cross section  [cm2/atom]
 	    xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
 
 	  }
-	  else {                      //  OTHER PARTICLES
+	  else { //  OTHER PARTICLES
 
-	    double getot = pke + ptm;
-	    double pmom = sqrt( pke * ( getot + ptm ) );
+	    double getot = Ek + ptm;
 	    xlel = min( 2232.0 * radl * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radl );
 	    // units ?
 	  }
 
-	  pkeprev = pke;
+	  elvse.Fill( log(Ek)/log10, 1e4/xlel );
+	  invse.Fill( log(Ek)/log10, 1e4/xm0 );
+
+	  Ekprev = Ek;
 
 	  if( ldb )
-	    cout << "  ev " << iev << " type " << npm << ", ekin " << pke*1e3 << " keV"
+	    cout << "  ev " << iev << " type " << npm << ", Ekin " << Ek*1e3 << " keV"
 		 << ", beta " << sqrt(betasq) << ", gam " << gam << endl
 		 << "  Emax " << Emax << ", nlast " << nlast << ", Elast " << E[nlast]
 		 << ", norm " << totsig[nlast] << endl
@@ -875,7 +883,7 @@ int main( int argc, char* argv[] )
 
 	zz += xr*vect[2];
 
-	if( ldb && pke < 1 )
+	if( ldb && Ek < 1 )
 	  cout << "step " << xr*1e4 << ", z " << zz*1e4 << endl;
 
 	hzz.Fill( zz*1e4 );
@@ -907,15 +915,15 @@ int main( int argc, char* argv[] )
 	  hde2.Fill( Eg*1e-3 );
 	  hdel.Fill( log(Eg)/log10 );
 
-	  double resekin = pke - Eg*1E-6; // [ MeV]
+	  double resekin = Ek - Eg*1E-6; // [ MeV]
 
 	  // cut off for further movement: [MeV]
 
 	  if( resekin < 0.00999 ) {
 
-	    // cout << "@@@ NEG RESIDUAL ENERGY" << pke*1e3 << Eg*1e-3 << resekin*1e-3
-	    Eg = pke*1E6; // [eV]
-	    resekin = pke - Eg; // zero
+	    // cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << Eg*1e-3 << resekin*1e-3
+	    Eg = Ek*1E6; // [eV]
+	    resekin = Ek - Eg; // zero
 	    // cout << "LAST ENERGY LOSS" << Eg << resekin
 
 	  }
@@ -926,14 +934,14 @@ int main( int argc, char* argv[] )
 	  // emission angle from delta:
 
 	  // PRIMARY SCATTERING ANGLE:
-	  // SINT = SQRT(ER*1.E-6/PPKE) ! Mazziotta = deflection angle
+	  // SINT = SQRT(ER*1.E-6/EK) ! Mazziotta = deflection angle
           // COST = SQRT(1.-SINT*SINT)
 	  // STORE INFORMATION ABOUT DELTA-RAY:
 	  // SINT = COST ! flip
-	  // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / pke ) ! wrong
+	  // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / Ek ) ! wrong
 
 	  //double cost = sqrt( Eg / (twome + Eg) ); // M. Swartz
-	  double cost = sqrt( Eg / (twome + Eg) * ( pke + twome*1e-6 ) / pke ); // Penelope, Geant4
+	  double cost = sqrt( Eg / (twome + Eg) * ( Ek + twome*1e-6 ) / Ek ); // Penelope, Geant4
 	  double sint = sqrt( 1 - cost*cost ); // mostly 90 deg
 	  double phi = 2*pi*unirnd(rgen);
 
@@ -1077,7 +1085,7 @@ int main( int argc, char* argv[] )
 	    else
 	      qm += neh;
 
-	    if( pke > 0.99*Ekin0 ) { // stopping deltas give ugly spike
+	    if( Ek > 0.99*Ekin0 ) { // stopping deltas give ugly spike
 	      hcleh.Fill( log(neh)/log10 ); // per cluster
 	      hreh.Fill( neh/Eg );
 	      wvse.Fill( log(Eg)/log10, Eg/neh );
@@ -1091,32 +1099,34 @@ int main( int argc, char* argv[] )
 
 	  } // neh
 
-	  pke -= Eg*1E-6; // [MeV]
+	  Ek -= Eg*1E-6; // [MeV]
 
-	  if( ldb && pke < 1 )
-	    cout << "    pke " << pke*1e3
+	  if( ldb && Ek < 1 )
+	    cout << "    Ek " << Ek*1e3
 		 << " keV, z " << zz*1e4 << ", neh " << neh
 		 << ", steps " << it << ", ion " << nloss << ", elas " << nscat
 		 << ", cl " << clusters.size()
 		 << endl;
 
-	  if( pke < 1E-6 || resekin < 1E-6 ) {
+	  if( Ek < 1E-6 || resekin < 1E-6 ) {
 	    // cout << "  absorbed" << endl;
 	    break;
 	  }
 
-	  if( npm == 4 ) { // electrons, update elastic cross section at new pke
+	  if( npm == 4 ) { // electrons, update elastic cross section at new Ek
 
-	    gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pke*1E6);
+	    //gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (Ek*1E6); // Mazziotta
+	    double pmom = sqrt( Ek * ( Ek + 2*ptm ) ); // [MeV/c] 2nd binomial
+	    gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
 	    double E2 = 14.4e-14; // [MeV*cm]
-	    double FF = 0.5*pi * E2*E2 * ZA*ZA / (pke*pke);
+	    double FF = 0.5*pi * E2*E2 * ZA*ZA / (Ek*Ek);
 	    double S0EL = 2*FF / ( gn * ( 2 + gn ) ); // elastic total cross section  [cm2/atom]
 	    xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
 
 	  }
 
 	}
-	else { // ELASTIC SCATTERING: Gaussian scattering with Rossi formula
+	else { // ELASTIC SCATTERING: Chaoui 2006
 
 	  ++nscat;
 
@@ -1150,7 +1160,7 @@ int main( int argc, char* argv[] )
 
       cout << ", zmax " << zmax*1e4 << " um" << endl;
 
-      pkeprev = 9e9; // update flag for next delta
+      Ekprev = 9e9; // update flag for next delta
 
     } // while deltas
     /*

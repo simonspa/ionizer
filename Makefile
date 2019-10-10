@@ -4,12 +4,8 @@ ROOTLIBS   = $(shell $(ROOTSYS)/bin/root-config --libs)
 
 ionizer: ionizer.cc Makefile
 	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o ionizer  ionizer.cc $(ROOTLIBS)
-	@echo 'done: ionizer (with ROOT)'
+	@echo 'done: ionizer'
 
 mfp: mfp.cc Makefile
 	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o mfp  mfp.cc $(ROOTLIBS)
-	@echo 'done: mfp (with ROOT)'
-
-ionizerpp: ionizer.cpp Makefile
-	g++ -O2 -Wall -Wextra -std=c++17 -m64 -o ionizerpp  ionizer.cpp
-	@echo 'done: ionizerpp (without ROOT)'
+	@echo 'done: mfp'
