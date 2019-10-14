@@ -1,15 +1,17 @@
-
 // simulation of ionization by charged particle tracks in silicon
 
 // make ionizer
 
-// time ionizer -n 10100 -t 150 -w 25 -c 0.05 -e 5000
+// time ionizer -n 10100 -t 150 -p 25 -a 9.5 -c 0.05 -e 5000
 
 // -n events
 // -t Si thickness [um]
-// -w pixel width [um]
+// -p pixel size [um]
 // -c pixel threshold cut [fraction]
 // -e kinetic energy [MeV]
+// -a angle of incidence [deg]
+
+// root -l psi/r4s/resvsgeo.C
 
 // History:
 
@@ -107,7 +109,7 @@ uniform_real_distribution <double> unirnd( 0, 1 );
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int main( int argc, char* argv[] )
 {
-  // USER steering:
+  // defaults:
 
   bool ldb = 0; // debug flag
 
@@ -117,11 +119,13 @@ int main( int argc, char* argv[] )
 
   double Ekin0 = 5000; // [MeV] kinetic energy
 
-  double width = 25; // [um] pixels size
+  double pitch = 25; // [um] pixels size
 
   double thr = 0.05; // fraction of peak signal
 
   bool fast = 1; // default is fast
+
+  double angle = 999; // flag
 
   for( int i = 1; i < argc; ++i ) {
 
@@ -140,16 +144,27 @@ int main( int argc, char* argv[] )
     if( !strcmp( argv[i], "-c" ) )
       thr = atof( argv[++i] ); // pixel threshold [relative]
 
-    if( !strcmp( argv[i], "-w" ) )
-      width = atof( argv[++i] ); // [um]
+    if( !strcmp( argv[i], "-p" ) )
+      pitch = atof( argv[++i] ); // [um]
+
+    if( !strcmp( argv[i], "-a" ) )
+      angle = atof( argv[++i] ); // [deg]
 
   } // argc
 
   thr = thr*75*tmic; // [eh]
 
-  double tilt = atan( width / tmic ); // [rad]
+  double pi = 3.1415926536;
+  double wt = 180/pi;
+  double twopi = 2*pi;
 
-  double explicit_delta_energy_cut_keV = 10;
+  double tilt = atan( pitch / tmic ); // [rad] default
+  if( angle < 91 )
+    tilt = angle/wt;
+
+  double width = tmic*tan(tilt); // [um] projected track
+
+  double explicit_delta_energy_cut_keV =  2;
 
   // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
@@ -157,9 +172,6 @@ int main( int argc, char* argv[] )
 
   double temp = 300; // [K]
 
-  double pi = 3.1415926536;
-  double wt = 180/pi;
-  double twopi = 2*pi;
   double elmm = 0.51099906; // e mass [MeV]
   double elm = 1e6 * elmm; // me [eV]
   double twome = 2*elm; // [eV]
@@ -171,8 +183,9 @@ int main( int argc, char* argv[] )
   cout << "  kinetic energy   " << Ekin0 << " MeV" << endl;
   cout << "  number of events " << nev << endl;
   cout << "  thickness        " << tmic << " um" << endl;
-  cout << "  pixel width      " << width << " um" << endl;
+  cout << "  pixel pitch      " << pitch << " um" << endl;
   cout << "  incident angle   " << tilt*wt << " deg" << endl;
+  cout << "  track path       " << width << " um" << endl;
   cout << "  temperature      " << temp << " K" << endl;
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
@@ -237,6 +250,8 @@ int main( int argc, char* argv[] )
 
   TH1I hteh( "teh", "total e-h;total charge [ke];tracks / 0.2 ke",
 	     max(100,int(25*0.1*tmic)), 0, max(1,int(5*0.1*tmic)) );
+  TH1I hq0( "q0", "normal charge;normal charge [ke];tracks",
+	     max(100,int(25*0.1*tmic)), 0, max(1,int(5*0.1*tmic)) );
   TH1I hrms( "rms", "RMS e-h;charge RMS [e];tracks",
 	     100, 0, 50*tmic );
 
@@ -244,7 +259,19 @@ int main( int argc, char* argv[] )
   TProfile eta0vsym( "eta0vsym", "eta vs track;track y [#mum];<eta>",
 		     200, -0.5*width, 0.5*width );
   TH1I hdy0( "dy0", "dy0;dy [#mum];tracks", 200, -width, width );
+  TProfile mady0vsq( "mady0vsq",
+		     "MAD(#Deltay) vs normalized charge;normal charge [ke];MAD(#Deltay) [#mum]",
+		     100, 0, 2*0.1*tmic );
+  TProfile dy0vsym( "dy0vsym",
+		    "#Deltay vs y;track y [#mum];<#Deltay> [#mum]",
+		    width, -0.5*width, 0.5*width );
+  TProfile mady0vsym( "mady0vsym",
+		      "MAD(#Deltay) vs y;track y [#mum];MAD(#Deltay) [#mum]",
+		      width, -0.5*width, 0.5*width );
   TH1I hdy0c( "dy0c", "dy0 Landau peak;dy [#mum];tracks", 200, -width, width );
+  TH1I hdy0c85( "dy0c85", "dy0 Landau peak;dy [#mum];tracks", 200, -width, width );
+  TH1I hdy0c80( "dy0c80", "dy0 Landau peak;dy [#mum];tracks", 200, -width, width );
+  // dy0c->GetXaxis()->SetRangeUser(-3*dy0c->GetRMS(),3*dy0c->GetRMS());dy0c->Draw()
 
   TH1I heta1( "eta1", "eta threshold;eta;tracks", 201, -1.005, 1.005 );
   TProfile eta1vsym( "eta1vsym", "eta threshold vs track;track y [#mum];<eta>",
@@ -787,14 +814,12 @@ int main( int argc, char* argv[] )
 
 	    for( unsigned i = 1; i <= 4; ++i ) {
 
+	      sig[5][j] += sig[i][j]; // sum
+
 	      // divide by E**2 to get the differential collision cross section sigma
 	      // Tsig = integrated total collision cross section
 
 	      tsig[i]  = tsig[i]  + sig[i][j] * dE[j] / ( E[j]*E[j] );
-
-	      // sig(5,j] = total differential cross section, Eq. (3.8) in RMP
-
-	      sig[5][j] += sig[i][j];
 
 	    } // i
 
@@ -1188,17 +1213,30 @@ int main( int argc, char* argv[] )
     else
       htde0.Fill( tde*1e-3 ); // [keV]
     hteh.Fill( meh*1e-3 ); // [ke]
+    hq0.Fill( meh*cos(tilt)*1e-3 ); // [ke]
     hrms.Fill( sqrt(sumeh2) );
 
     double eta = (qp-qm)/(qp+qm);
     heta0.Fill( eta );
     eta0vsym.Fill( ym, eta );
 
-    double cog = ( -0.5*width*qm + 0.5*width*qp )/(qp+qm); // = 0.5*width*eta
+    double cog = ( -0.5*pitch*qm + 0.5*pitch*qp )/(qp+qm); // = 0.5*pitch*eta
     double dy = cog - ym;
     hdy0.Fill( dy );
-    if( meh < 100*tmic )
+
+    mady0vsq.Fill( meh*cos(tilt)*1e-3, fabs(dy) );
+
+    if( meh*cos(tilt) < 90*tmic ) {
       hdy0c.Fill( dy );
+      dy0vsym.Fill( ym, dy );
+      mady0vsym.Fill( ym, fabs(dy) );
+    }
+
+    if( meh*cos(tilt) < 85*tmic )
+      hdy0c85.Fill( dy );
+
+    if( meh*cos(tilt) < 80*tmic )
+      hdy0c80.Fill( dy );
 
     // threshold:
 
@@ -1211,10 +1249,10 @@ int main( int argc, char* argv[] )
     heta1.Fill( eta );
     eta1vsym.Fill( ym, eta );
 
-    cog = ( -0.5*width*qm + 0.5*width*qp )/(qp+qm); // = 0.5*width*eta
+    cog = ( -0.5*pitch*qm + 0.5*pitch*qp )/(qp+qm); // = 0.5*pitch*eta
     dy = cog - ym;
     hdy1.Fill( dy );
-    if( meh < 100*tmic )
+    if( meh*cos(tilt) < 90*tmic )
       hdy1c.Fill( dy );
 
     // 2*threshold:
@@ -1228,10 +1266,10 @@ int main( int argc, char* argv[] )
     heta2.Fill( eta );
     eta2vsym.Fill( ym, eta );
 
-    cog = ( -0.5*width*qm + 0.5*width*qp )/(qp+qm); // = 0.5*width*eta
+    cog = ( -0.5*pitch*qm + 0.5*pitch*qp )/(qp+qm); // = 0.5*pitch*eta
     dy = cog - ym;
     hdy2.Fill( dy );
-    if( meh < 100*tmic )
+    if( meh*cos(tilt) < 90*tmic )
       hdy2c.Fill( dy );
 
   } // events
