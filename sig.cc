@@ -1,12 +1,12 @@
 
-// calculate mean free path for ionization
+// energy loss cross section
 // Hans Bichsel code
 
-// make mfp
-// mfp
+// make sig
+// sig
 // reads HEPS.TAB, MACOM.TAB, EMERC.TAB
 
-// produces mfp.root
+// produces sig.root
 
 #include <cstdlib> // atoi
 #include <iostream> // cout
@@ -54,7 +54,6 @@ int main()
   double Z = 14.0; // atomic number of absorber, Si
   double A = 28.086; // atomic weight of absorber
   double rho = 2.329; // rho= density of absorber material
-  double radl = 9.36; // [cm]
 
   double atnu = 6.0221367e23 * rho / A; // atnu = # of atoms per cm**3
 
@@ -63,40 +62,6 @@ int main()
     << endl << "element " << Z << ", density " << rho << " g/cm3"
     << endl << "temperature " << temp << " K"
     << endl;
-
-  // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-  // book histos
-
-  TFile * histoFile = new TFile( "mfp.root", "RECREATE" );
-
-  TProfile betavse( "betavse",
-		    "beta;log_{10}(Ekin [MeV]);beta",
-		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile lastvse( "lastvse",
-		    "last dE/E;log_{10}(Ekin [MeV]);last de/E",
-		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile zeffvse( "zeffvse",
-		    "Zeff;log_{10}(Ekin [MeV]);Zeff",
-		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile xmfpvse( "xmfpvse",
-		    "inelastic mean free path;log_{10}(Ekin [MeV]);inelastic mean free path [#mum]",
-		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile derdxvse( "derdxvse",
-		     "restricted energy loss;log_{10}(Ekin [MeV]);restricted energy loss [eV/um]",
-		     6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile dedxvse( "dedxvse",
-		    "total energy loss;log_{10}(Ekin [MeV]);total energy loss [eV/um]",
-		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile rm0vse( "rm0vse",
-		   "tail interactions;log_{10}(Ekin [MeV]);tail interactions [1/#mum]",
-		   6*50+1, -3.01, 3.01 ); // 50 steps/decade
-  TProfile devse( "devse",
-		  "energy loss per step;log_{10}(Ekin [MeV]);energy loss [eV/interaction]",
-		  6*50+1, -3.01, 3.01 ); // 50 steps/decade
-
-  TProfile emfpvse( "emfpvse",
-		    "elastic mean free path;log_{10}(Ekin [MeV]);elastic mean feee path [#mum]",
-		    6*50+1, -3.01, 3.01 ); // 50 steps/decade
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // initialize energy bins
@@ -129,6 +94,35 @@ int main()
     << endl << "Etop " << Etop*1e-6 << " MeV"
     << endl << "bins " << nume
     << endl;
+
+  // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+  // book histos
+
+  TFile * histoFile = new TFile( "sig.root", "RECREATE" );
+
+  double E0 = Emin/sqrt(um);
+  double E9 = Etop;
+  TProfile sig1( "sig1",
+		 "sig1;log_{10}(dE [eV]);dE^{2}sig1",
+		 lime-1, log(E0)/log10, log(E9)/log10 );
+  TProfile sig2( "sig2",
+		 "sig2;log_{10}(dE [eV]);dE^{2}sig2",
+		 lime-1, log(E0)/log10, log(E9)/log10 );
+  TProfile sig3( "sig3",
+		 "sig3;log_{10}(dE [eV]);dE^{2}sig3",
+		 lime-1, log(E0)/log10, log(E9)/log10 );
+  TProfile sig4( "sig4",
+		 "sig4;log_{10}(dE [eV]);dE^{2}sig4",
+		 lime-1, log(E0)/log10, log(E9)/log10 );
+  TProfile sig5( "sig5",
+		 "sig5;log_{10}(dE [eV]);dE^{2}sig5",
+		 lime-1, log(E0)/log10, log(E9)/log10 );
+
+  for( unsigned j = 1; j < nume; ++j )
+    cout << j << "  "
+	 << E[j] << "  "
+	 << exp(sig5.GetBinCenter(j)*log10) << "  "
+	 << endl;
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // read dielectric constants
@@ -300,192 +294,123 @@ int main()
 
   // incident energy:
 
-  double dErdx = 0;
-  double dEdx = 0;
-  double xmfp = 0;
+  double ekmev = 5000; // [MeV]
 
-  double ekmev = 0.001; // [MeV]
+  double gam = ekmev / ptm + 1; // W = total energy / restmass
+  double bg  = sqrt( gam*gam - 1 ); // bg = beta*gamma
+  double betasq = bg*bg / ( 1 + bg*bg );
 
-  while( ekmev < 1001 ) {
+  // maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
 
-    double l10ekmev = log(ekmev)/log10;
-    double gam = ekmev / ptm + 1; // W = total energy / restmass
-    double bg  = sqrt( gam*gam - 1 ); // bg = beta*gamma
-    double betasq = bg*bg / ( 1 + bg*bg );
-    betavse.Fill( l10ekmev, sqrt(betasq) );
+  double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam ); // bug fixed
+  if( npm == 4 ) // e
+    Emax = 0.5*ekmev;
 
-    // maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
+  Emax = 1e6 * Emax; // eV
 
-    double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam ); // bug fixed
-    if( npm == 4 ) // e
-      Emax = 0.5*ekmev;
+  // Define parameters and calculate Inokuti"s sums,
+  // Sect 3.3 in Rev Mod Phys 43, 297 (1971)
 
-    Emax = 1e6 * Emax; // eV
+  double dec = zi*zi * atnu * fac / betasq;
+  double bbemx = betasq / Emax; // [1/eV]
+  double ekin  = ekmev * 1e6;
+  double twombb = 2 * elm * betasq; // [eV]
 
-    // Define parameters and calculate Inokuti"s sums,
-    // Sect 3.3 in Rev Mod Phys 43, 297 (1971)
+  // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
+  // sig(*,j) actually is dE**2 * sigma(E)
 
-    double dec = zi*zi * atnu * fac / betasq;
-    double bbemx = betasq / Emax; // [1/eV]
-    double ekin  = ekmev * 1e6;
-    double twombb = 2 * elm * betasq; // [eV]
+  double tsig[6];
+  for( unsigned i = 1; i <= 5; ++i )
+    tsig[i] = 0;
 
-    // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
-    // sig(*,j) actually is dE**2 * sigma(E)
+  double zeff = 0;
+  double stpw = 0;
 
-    double tsig[6];
-    for( unsigned i = 1; i <= 5; ++i )
-      tsig[i] = 0;
+  for( unsigned j = 1; j <= nume; ++j ) {
 
-    double zeff = 0;
-    double stpw = 0;
-    unsigned nlast = nume;
+    if( E[j] > Emax ) break;
 
-    for( unsigned j = 1; j <= nume; ++j ) {
+    zeff += dfdE[j] * dE[j];
 
-      if( E[j] > Emax ) break;
+    // Eq. (3.1) in RMP and red notebook CCS-33, 39 & 47
 
-      nlast = j;
+    double Q1 = Ry;
+    if( E[j] < 100.0 ) Q1 = pow( 0.025, 2 ) * Ry;
+    if( E[j] <  11.9 ) Q1 = pow( xkmn[j], 2 ) * Ry;
 
-      zeff += dfdE[j] * dE[j];
+    double qmin = E[j]*E[j] / twombb; // twombb = 2 m beta**2 [eV]
 
-      // Eq. (3.1) in RMP and red notebook CCS-33, 39 & 47
+    if( E[j] < 11.9 && Q1 < qmin )
+      sig[1][j] = 0;
+    else
+      sig[1][j] = E[j] * dfdE[j] * log( Q1 / qmin );
+    // longitudinal excitation, Eq. (46) in Fano; Eq. (2.9) in RMP
 
-      double Q1 = Ry;
-      if( E[j] < 100.0 ) Q1 = pow( 0.025, 2 ) * Ry;
-      if( E[j] <  11.9 ) Q1 = pow( xkmn[j], 2 ) * Ry;
+    double epbe = 1 - betasq * ep[1][j]; // Fano Eq. (47)
+    if( epbe < 1e-20 ) epbe = 1E-20;
 
-      double qmin = E[j]*E[j] / twombb; // twombb = 2 m beta**2 [eV]
+    double sgg = E[j] * dfdE[j] * (-0.5) *
+      log( epbe*epbe + pow( betasq * ep[2][j], 2 ) );
 
-      if( E[j] < 11.9 && Q1 < qmin )
-	sig[1][j] = 0;
-      else
-	sig[1][j] = E[j] * dfdE[j] * log( Q1 / qmin );
-      // longitudinal excitation, Eq. (46) in Fano; Eq. (2.9) in RMP
+    double thet = atan( ep[2][j] * betasq / epbe );
+    if( thet < 0 ) thet = thet + pi; // plausible-otherwise I"d have a jump
+    // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
 
-      double epbe = 1 - betasq * ep[1][j]; // Fano Eq. (47)
-      if( epbe < 1e-20 ) epbe = 1E-20;
+    double sgh = 0.0092456 * E[j]*E[j] * thet *
+      ( betasq - ep[1][j] / ( pow( ep[1][j], 2 ) + pow( ep[2][j], 2 ) ) );
 
-      double sgg = E[j] * dfdE[j] * (-0.5) *
-	log( epbe*epbe + pow( betasq * ep[2][j], 2 ) );
+    sig[2][j] = sgg; // dEdx 373.92 eV/um, mfp  0.262336 um
+    sig[3][j] = sgh; // small, negative
 
-      double thet = atan( ep[2][j] * betasq / epbe );
-      if( thet < 0 ) thet = thet + pi; // plausible-otherwise I"d have a jump
-      // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
+    //sig[2][j] = 0; // TEST dEdx 303.619 eV/um
+    //sig[2][j] *= 2; // TEST dEdx 444.221 eV/um, mfp 0.248402 um
+    //if( E[j] > 1838 ) sig[2][j] = 0; // TEST dEdx 352.646 eV/um, mfp 0.262832 um
 
-      double sgh = 0.0092456 * E[j]*E[j] * thet *
-	( betasq - ep[1][j] / ( pow( ep[1][j], 2 ) + pow( ep[2][j], 2 ) ) );
+    double uef = 1 - E[j] * bbemx;
+    if( npm == 4 )
+      uef = 1 +
+	pow( E[j] / ( ekin - E[j] ), 2 ) +
+	pow( (gam-1) / gam * E[j]/ekin, 2 ) -
+	( 2*gam-1 ) * E[j] / ( gam*gam * ( ekin - E[j] ) );
 
-      sig[2][j] = sgg;
-      sig[3][j] = sgh; // tiny
+    // uef from  Eqs. 9 & 2 in Uehling, Ann Rev Nucl Sci 4, 315 (1954)
+    // if( j == 1) PRINT*, " uef=",UEF
 
-      double uef = 1 - E[j] * bbemx;
-      if( npm == 4 )
-	uef = 1 +
-	  pow( E[j] / ( ekin - E[j] ), 2 ) +
-	  pow( (gam-1) / gam * E[j]/ekin, 2 ) -
-	  ( 2*gam-1 ) * E[j] / ( gam*gam * ( ekin - E[j] ) );
+    sig[4][j] = 2 * sig[6][j] * uef;
 
-      // uef from  Eqs. 9 & 2 in Uehling, Ann Rev Nucl Sci 4, 315 (1954)
-      // if( j == 1) PRINT*, " uef=",UEF
+    // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
 
-      sig[4][j] = 2 * sig[6][j] * uef;
+    sig[5][j] = 0;
 
-      // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
+    for( unsigned i = 1; i <= 4; ++i ) {
 
-      sig[5][j] = 0;
+      // sig(5,j] = total differential cross section, Eq. (3.8) in RMP
 
-      for( unsigned i = 1; i <= 4; ++i ) {
+      sig[5][j] += sig[i][j];
 
-	// integrated total collision cross section:
+      // integrated total collision cross section:
 
-	tsig[i]  = tsig[i]  + sig[i][j] * dE[j] / ( E[j]*E[j] );
+      tsig[i]  = tsig[i]  + sig[i][j] * dE[j] / ( E[j]*E[j] );
 
-	// sig(5,j] = total differential cross section, Eq. (3.8) in RMP
+    } // i
 
-	sig[5][j] += sig[i][j];
+    double logE = log(E[j])/log10;
+    sig1.Fill( logE, sig[1][j] );
+    sig2.Fill( logE, sig[2][j] );
+    sig3.Fill( logE, sig[3][j] );
+    sig4.Fill( logE, sig[4][j] );
+    sig5.Fill( logE, sig[5][j] );
 
-      } // i
+    tsig[5] += sig[5][j] / ( E[j]*E[j] ) * dE[j]; // total cross section
 
-      tsig[5] += sig[5][j] / ( E[j]*E[j] ) * dE[j]; // total cross section
+    stpw += sig[5][j] / E[j] * dE[j]; // dE/dx
 
-      stpw += sig[5][j] / E[j] * dE[j]; // dE/dx
+  } // dE j
 
-    } // dE j
+  double xm0 = tsig[5] * dec; // 1/path [1/cm]
 
-    double xm0 = tsig[5] * dec; // 1/path [1/cm]
-
-    dErdx = stpw * dec; // [eV/cm]
-
-    double Efin = E[nlast]*sqrt(um); // [eV]
-
-    lastvse.Fill( l10ekmev, Efin/ekin );
-    zeffvse.Fill( l10ekmev, zeff );
-    xmfpvse.Fill( l10ekmev, 1e4/xm0 ); // [um]
-    derdxvse.Fill( l10ekmev, dErdx*1e-4 ); // [eV/um]
-
-    // add rest from Etop to Emax:
-
-    double rst = 0;
-    double rm0 = 0;
-
-    if( Emax > Etop ) {
-
-      if( npm == 4 ) // e, FSR-143 and Uehling Eq 9
-	rst = // dEdx
-	  log( Emax/Etop ) + log( Emax ) - log( ekin - Etop ) - 1 / ( 1 - Etop / ekin ) + 2 +
-	  pow( ( gam-1 ) / gam, 2 ) * ( 0.125 - 0.5 * pow( Etop/ekin, 2 ) ) +
-	  ( 2*gam - 1 ) / (gam*gam) * ( log( Emax ) - log( ekin-Etop ) );
-      else
-	rst =
-	  ( 1 - 720*betasq / Emax ) * log( Emax/Etop ) +
-	  720 * ( 1/Etop - 1/Emax ) - betasq * ( 1 - Etop/Emax );
-
-      rm0 = // cross section
-	( 1 - 720*betasq / Emax ) *
-	( 1/Etop - 1/Emax + 2/(Etop*Etop) - 2/(Emax*Emax) ) -
-	betasq * log( Emax/Etop ) / Emax;
-
-    }
-
-    dEdx = dErdx + Z * rst * dec;
-    dedxvse.Fill( l10ekmev, dEdx*1e-4 ); // [eV/um]
-
-    rm0vse.Fill( l10ekmev, Z*rm0*dec*1e-4 ); // [1/um] should be small, is small
-    xmfp = xm0 + Z*rm0*dec; // [1/cm]
-    devse.Fill( l10ekmev, dEdx/xmfp ); // [eV/step] 40..120
-
-    // elastic:
-
-    double xlel = 1;
-
-    if( npm == 4 ) { // e
-
-      double gn = 2*2.61 * pow( Z, 2.0/3.0 ) / ekin;
-      double E2 = 14.4e-14; // [MeV*cm]
-      double FF = 0.5*pi * E2*E2 * Z*Z / (ekmev*ekmev);
-      double S0EL = 2*FF / ( gn * ( 2 + gn ) );
-      // elastic total cross section  [cm2/atom]
-      xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
-
-    }
-    else { // other particles
-
-      double getot = ekmev + ptm;
-      double pmom = sqrt( ekmev * ( getot + ptm ) );
-      xlel = min( 2232 * radl * pow( pmom*pmom / (getot*zi), 2 ), 10*radl );
-      // units ?
-    }
-
-    emfpvse.Fill( l10ekmev, 1e4/xlel ); // [um]
-
-    ekmev *= pow( 10, 0.02 );
-
-  } // ekmev
-
-  cout << endl << "final mfp  " << 1e4/xmfp << " um"
-       << endl << "final dEdx " << dEdx*1e-4 << " eV/um"
-       << endl << "restricted " << dErdx*1e-4 << " eV/um"
+  cout << endl << "mfp " << 1e4/xm0 << " um"
+       << endl << "dEdx " << stpw*dec*1e-4 << " eV/um"
        << endl;
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

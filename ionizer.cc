@@ -208,8 +208,8 @@ int main( int argc, char* argv[] )
 	    4*2*width, -width, width, 4*tmic, 0, tmic );
   }
 
-  TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]", 120, -2, 4 );
-  TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]", 120, -2, 4 );
+  TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]", 140, -3, 4 );
+  TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]", 140, -3, 4 );
 
   TH1I hstep5( "step5", "step length;step length [#mum];steps", 500, 0, 5 );
   TH1I hstep0( "step0", "step length;step length [#mum];steps", 500, 0, 0.05 );
@@ -248,10 +248,10 @@ int main( int argc, char* argv[] )
   TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
 	      max(100,int(lastbin)), 0, int(lastbin) );
 
-  TH1I hteh( "teh", "total e-h;total charge [ke];tracks / 0.2 ke",
-	     max(100,int(25*0.1*tmic)), 0, max(1,int(5*0.1*tmic)) );
+  TH1I hteh( "teh", "total e-h;total charge [ke];tracks",
+	     max(100,int(50*0.1*tmic)), 0, max(1,int(10*0.1*tmic)) );
   TH1I hq0( "q0", "normal charge;normal charge [ke];tracks",
-	     max(100,int(25*0.1*tmic)), 0, max(1,int(5*0.1*tmic)) );
+	     max(100,int(50*0.1*tmic)), 0, max(1,int(10*0.1*tmic)) );
   TH1I hrms( "rms", "RMS e-h;charge RMS [e];tracks",
 	     100, 0, 50*tmic );
 
@@ -645,11 +645,10 @@ int main( int argc, char* argv[] )
 
   double Egap = 1.17 - 4.73e-4 * temp*temp / (636+temp);
 
-  //double Ethr = Egap;        // w = 2.9 eV / eh
-  double Ethr = 1.35*Egap;   // adapted, w 3.47 eV/pair
+  double Ethr = 1.5*Egap;  // energy conservation
 
-  double eom0 = 0.063;           // phonons
-  double aaa = 5.2;              // Alig 1980
+  double eom0 = 0.063; // phonons
+  double aaa = 5.2;    // Alig 1980
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
@@ -739,7 +738,6 @@ int main( int argc, char* argv[] )
 	  // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
 	  if( npm == 4 ) Emax = 0.5*Ek;
 	  // maximum energy loss for incident electrons
-
 	  Emax = 1e6 * Emax; // eV
 
 	  // Define parameters and calculate Inokuti"s sums,
@@ -747,7 +745,7 @@ int main( int argc, char* argv[] )
 
 	  double dec = zi*zi * atnu * fac / betasq;
 	  double bemx = betasq / Emax;
-	  double EkeV   = Ek * 1e6; // [eV]
+	  double EkeV = Ek * 1e6; // [eV]
 	  double twombb = 2 * elm * betasq; // [eV]
 
 	  // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
@@ -793,7 +791,12 @@ int main( int argc, char* argv[] )
 	    double sgh = 0.0092456 * E[j]*E[j] * thet *
 	      ( betasq - ep[1][j] / ( pow( ep[1][j], 2 ) + pow( ep[2][j], 2 ) ) );
 
-	    sig[3][j] = sgg + sgh;
+	    sig[2][j] = sgg;
+	    sig[3][j] = sgh; // small, negative
+
+	    //sig[2][j] = 0; // TEST, worse resolution: more fluctuations
+	    //sig[2][j] *= 2; // TEST, better resolution: less fluctuations
+	    //if( E[j] > 1838 ) sig[2][j] = 0; // TEST, 7% better resolution
 
 	    double uef = 1 - E[j] * bemx;
 	    if( npm == 4 )
@@ -809,7 +812,6 @@ int main( int argc, char* argv[] )
 
 	    // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
 
-	    sig[2][j] = 0;
 	    sig[5][j] = 0;
 
 	    for( unsigned i = 1; i <= 4; ++i ) {
@@ -944,7 +946,7 @@ int main( int argc, char* argv[] )
 
 	  // cut off for further movement: [MeV]
 
-	  if( resekin < 0.00999 ) {
+	  if( resekin < explicit_delta_energy_cut_keV*1e-3 ) {
 
 	    // cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << Eg*1e-3 << resekin*1e-3
 	    Eg = Ek*1E6; // [eV]
@@ -953,8 +955,8 @@ int main( int argc, char* argv[] )
 
 	  }
 
-	  if( Eg < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
-	    tde += Eg; // [eV]
+	  //if( Eg < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
+	  tde += Eg; // [eV]
 
 	  // emission angle from delta:
 
@@ -1043,6 +1045,8 @@ int main( int argc, char* argv[] )
 	      deltas.push(t);
 
 	      ++ndelta;
+
+	      tde -= Eeh; // [eV], avoid double counting
 
 	      continue; // next ieh
 

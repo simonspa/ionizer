@@ -9,3 +9,7 @@ ionizer: ionizer.cc Makefile
 mfp: mfp.cc Makefile
 	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o mfp  mfp.cc $(ROOTLIBS)
 	@echo 'done: mfp'
+
+sig: sig.cc Makefile
+	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o sig  sig.cc $(ROOTLIBS)
+	@echo 'done: sig'
