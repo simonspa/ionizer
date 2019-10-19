@@ -1,3 +1,4 @@
+
 // simulation of ionization by charged particle tracks in silicon
 
 // make ionizer
@@ -149,6 +150,22 @@ int main( int argc, char* argv[] )
 
     if( !strcmp( argv[i], "-a" ) )
       angle = atof( argv[++i] ); // [deg]
+
+    if( !strcmp( argv[i], "-h" ) ) {
+      cout
+	<< "  simulate ionization by charged particles in silicon" << endl
+	<< "  usage: ionizer [option] [option] [option]" << endl
+	<< "         produces ionizer.root" << endl
+	<< "  options:" << endl
+	<< "    -t thickness [um] (default 150)" << endl
+	<< "    -p pixel width [um] (default 25)" << endl
+	<< "    -a angle of incidence [deg] (default atan(p/t))" << endl
+	<< "    -n number of events (default 10000)" << endl
+	<< "    -e incident kinetic energy [MeV] (default 5000)" << endl
+	<< "    -c readout threshold [fraction] (default 0.05)" << endl
+	;
+      return 0;
+    }
 
   } // argc
 
@@ -645,7 +662,7 @@ int main( int argc, char* argv[] )
 
   double Egap = 1.17 - 4.73e-4 * temp*temp / (636+temp);
 
-  double Ethr = 1.5*Egap;  // energy conservation
+  double Ethr = 1.5*Egap; // energy conservation
 
   double eom0 = 0.063; // phonons
   double aaa = 5.2;    // Alig 1980
