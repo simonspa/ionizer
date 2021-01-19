@@ -12,6 +12,7 @@ and
 M. Brigida, M.N. Mazzotta et al:  
 A new Monte Carlo code for full simulation of silicon strip detectors  
 Nuclear Instruments and Methods in Physics Research A 533 (2004) 322–343
+https://doi.org/10.1016/j.nima.2004.05.127
 
 here translated to C++
 - ionizer.cpp is without root, produces ion clusters in ionizer.dat
