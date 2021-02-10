@@ -15,8 +15,8 @@ Nuclear Instruments and Methods in Physics Research A 533 (2004) 322–343
 https://doi.org/10.1016/j.nima.2004.05.127
 
 here translated to C++
-- ionizer.cpp is without root, produces ion clusters in ionizer.dat
-- ionizer.cc with ROOT, produces ionizer.root
+- ionizer.cc incidence with turn angle, produces ionizer.root
+- ionizer3.cc for edge-on triplets
 
 example plots: 5 GeV electrons passing 150 um Si
 
