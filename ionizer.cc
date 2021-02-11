@@ -189,6 +189,10 @@ int main( int argc, char* argv[] )
 
   double width = depth*tan(turn); // [mu] projected track, default: pitch
 
+  // [V/cm] mean electric field: Vbias-Vdepletion/2
+  double Efield = (120-30)/depth*1e4; // UHH
+  //double Efield = (70-60)/depth*1e4; // DepFET
+
   // delta ray range: 1 um at 10 keV (Mazziotta 2004)
   //double explicit_delta_energy_cut_keV = 2; Dec 2019
   double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
@@ -218,11 +222,11 @@ int main( int argc, char* argv[] )
   cout << "  readout threshold " << thr << " e" << endl;
   cout << "  cross talk        " << cx*100 << "%" << endl;
 
-  double Efield = (120-30)/depth*1e4; // [V/cm] mean electric field: Vbias-Vdepletion/2
-
   // mobility from pixelav:
+  // 0 = e, 1 = h
 
-  int j = 0; // 0 = e, 1 = h
+  int j = 0; // e CMS, B2 pixel
+  //int j = 1; // h for strips
 
   double cvm[2] = { 1.53e9, 1.62e8 }; // [cm/s] vmax at temp=1K
   double evm[2] = { -0.87, -0.52 };
@@ -249,19 +253,20 @@ int main( int argc, char* argv[] )
   // k/e = 8.6e-5 eV/K
 
   const double D = 8.61733e-5 * temp * mu; // diffuson constant
-  double dtime = 1e-9; // [s] time step
 
-  cout << "e mobil for " << Efield << " V/cm" << endl
-       << ": vm " << vm // cm/s = 100 um / ns
-       << ", Ec " << Ec
-       << ", mu0 " << mu0 << endl
-       << "beta " << beta
-       << ", mu " << mu
-       << ", v " << vd << " cm/s"
-       << " = " << vd/1e5 << " mu/ns" << endl
-       << " D " << D
-       << ", rms " << sqrt(2*D*dtime)*1e4 << " mu"
-       << endl;
+  cout
+    << endl
+    << "   mobility for " << Efield << " V/cm"
+    << ": vm " << vm // cm/s = 100 um / ns
+    << ", Ec " << Ec
+    << ", mu0 " << mu0 << endl
+    << "  beta " << beta
+    << ", mu " << mu
+    << ", v " << vd << " cm/s"
+    << " = " << vd/1e5 << " mu/ns" << endl
+    << "  D " << D
+    << ", rms " << sqrt(2*D*4e-9)*1e4 << " mu" // for 4 ns drift
+    << endl;
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // book histos
@@ -335,7 +340,7 @@ int main( int argc, char* argv[] )
     TH2I( "zx","z-x clusters;x [#mum];z [#mum];clusters [eh-pairs]",
 	  4*pitch, -2*pitch, 2*pitch, depth, 0, depth );
 
-  TH1I hdtime( "dtime", "drift time;drift time [ns];clusters", 100, 0, 10 );
+  TH1I hdtime( "dtime", "drift time;drift time [ns];clusters", 100, 0, 10+20*j );
   TH1I hdiff( "diff", "diffusion width;diffusion width [#mum];clusters", 100, 0, 10 );
   TH1I htf( "tf", "Gaussian tail fraction;Gausian tail fraction;clusters", 100, 0, 1 );
   TProfile tfvsx( "tfvsx", "Gaussian tail fraction vs x;x [#mum];Gausian tail fraction",
@@ -374,11 +379,9 @@ int main( int argc, char* argv[] )
 
   TH1I hpxq1( "pxq1", "thresholded pixel charge;pixel charge [ke];pixels",
 	      max(100,int(10*0.1*depth/1)), 0, max(1,int(5*0.1*depth/1)) );
-  TH1I hcolq1( "colq1", "column charge;column charge [ke];columns",
-	       int(50*0.1*depth/1), 0, int(10*0.1*depth/1) );
   TH1I hq1( "q1", "thresholded charge;charge [ke];tracks",
 	    max(100,int(50*0.1*depth)), 0, max(1,int(10*0.1*depth)) );
-  TH1I hnpx1( "npx1", "npx threshold;npx;tracks", 3, -0.5, 2.5 );
+  TH1I hnpx1( "npx1", "npx after threshold;npx;tracks", 4, 0.5, 4.5 );
   TProfile npx1vsxm( "npx1vsxm", "npx threshold vs track;track x [#mum];<npx>",
 		     200, -0.5*pitch, 0.5*pitch );
   TH1I heta1( "eta1", "eta threshold;eta;tracks", 201, -1.005, 1.005 );
@@ -444,8 +447,10 @@ int main( int argc, char* argv[] )
     dE[j]  = E[j+1] - E[j];
   }
 
-  cout << "n2 " << n2 << ", Emin " << Emin << ", um " << um
-       << ", E[nume] " << E[nume] << endl;
+  cout
+    << endl
+    << "  n2 " << n2 << ", Emin " << Emin << ", um " << um
+    << ", E[nume] " << E[nume] << endl;
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // READ DIELECTRIC CONSTANTS
@@ -471,7 +476,10 @@ int main( int argc, char* argv[] )
     tokenizer >> n2t;
     tokenizer >> numt;
 
-    cout << " HEPS.TAB: n2t " << n2t << ", numt " << numt << endl;
+    cout
+      << endl
+      << "  HEPS.TAB: n2t " << n2t << ", numt " << numt << endl;
+
     if( n2 != n2t ) cout << " CAUTION: n2 & n2t differ" << endl;
     if( nume != numt ) cout << " CAUTION: nume & numt differ" << endl;
     if( numt > nume ) numt = nume;
@@ -504,7 +512,7 @@ int main( int argc, char* argv[] )
 
     }
 
-    cout << "read " << jt << " data lines from HEPS.TAB" << endl;
+    cout << "  read " << jt << " data lines from HEPS.TAB" << endl;
 
     // MAZZIOTTA: 0.0 at 864
     // EP( 2, 864 ) = 0.5 * ( EP(2, 863) + EP(2, 865) )
@@ -537,7 +545,10 @@ int main( int argc, char* argv[] )
     tokenizer >> n2t;
     tokenizer >> numt;
 
-    cout << " MACOM.TAB: n2t " << n2t << ", numt " << numt << endl;
+    cout
+      << endl
+      << "  MACOM.TAB: n2t " << n2t << ", numt " << numt << endl;
+
     if( n2 != n2t ) cout << " CAUTION: n2 & n2t differ" << endl;
     if( nume != numt ) cout << " CAUTION: nume & numt differ" << endl;
     if( numt > nume ) numt = nume;
@@ -563,7 +574,7 @@ int main( int argc, char* argv[] )
 
     }
 
-    cout << "read " << jt << " data lines from MACOM.TAB" << endl;
+    cout << "  read " << jt << " data lines from MACOM.TAB" << endl;
 
   } // MACOM.TAB
 
@@ -609,7 +620,7 @@ int main( int argc, char* argv[] )
 
     }
 
-    cout << "read " << jt << " data lines from MACOM.TAB" << endl;
+    cout << "  read " << jt << " data lines from EMERC.TAB" << endl;
 
   } // EMERC.TAB
 
@@ -854,7 +865,7 @@ int main( int argc, char* argv[] )
 	  Emax = 1e6 * Emax; // eV
 
 	  // Define parameters and calculate Inokuti"s sums,
-	  // Sect 3.3 in Rev Mod Phys 43, 297 (1971)
+	  // S ect 3.3 in Rev Mod Phys 43, 297 (1971)
 
 	  double dec = zi*zi * atnu * fac / betasq;
 	  double bemx = betasq / Emax;
@@ -1362,7 +1373,7 @@ int main( int argc, char* argv[] )
       hreh.Fill( neh/Eg );
       wvse.Fill( log(Eg)/log10, Eg/neh ); // dE per eh pair
 
-      // 0 | 1 | 2 | 3, rows 0 and 3 are half-infinite
+      // 0 | 1 | 2 | 3, bins 0 and 3 are half-infinite
       // diffusion across x crack: |  |  |
 
       double xc = -pitch; // left
@@ -1380,14 +1391,14 @@ int main( int argc, char* argv[] )
       }
 
       double dtime = zz*1e-4/vd; // [s] drift time along z (mean speed theorem)
-      double diff = sqrt(2*D*dtime)*1e-4; // [cm] rms diffusion (projected or 3D?)
+      double diff = sqrt(2*D*dtime)*1e4; // [mu] rms diffusion (projected or 3D?)
       double uu = -(xx-xc)/w2/diff; // scaled diffusion distance for erfc
       double tf = 0.5*erfc(uu); // upper Gaussian tail fraction
 
       hdtime.Fill( dtime*1e9 );
       hdiff.Fill( diff );
       htf.Fill( tf );
-      tfvsx.Fill( xx, tf );
+      tfvsx.Fill( xx, tf ); // S-curve, x = 0 is a pixel boundary
 
       q1[p] += neh*tf;
       q1[m] += neh*(1-tf);
@@ -1421,7 +1432,7 @@ int main( int argc, char* argv[] )
 	madx0qvsxm0.Fill( xm, fabs(dx0) ); // inverted U-shape
     }
 
-    // threshold: 500e
+    // after threshold:
 
     int npx = 0;
     double sumq1 = 0;
@@ -1434,7 +1445,6 @@ int main( int argc, char* argv[] )
 	sumqx1 += q1[ir]*(ir-1.5); // -1.5, -0.5, 0.5, 1.5
       }
     }
-    hcolq1.Fill( sumq1*1e-3 );
     hq1.Fill( sumq1*1e-3 ); // [ke]
     hnpx1.Fill( npx );
     npx1vsxm.Fill( xm, npx );
@@ -1452,14 +1462,16 @@ int main( int argc, char* argv[] )
 
     if( sumq1 < 95*depth ) { // keep 2/3 in 300 mu
       hdx1q.Fill( dx1 );
-      // pitch  thck sigma
-      // 25 mu   50  2.48 mu
-      // 25 mu  100  1.69 mu
-      // 25 mu  150  1.4  mu
-      // 25 mu  285  1.08 mu
-      // 25 mu  450  0.93 mu
-      // 17 mu  285  0.73 mu
-      // 10 mu  285  0.43 mu
+      // pitch  thck thr  sigma
+      // 25 mu   50  500  2.48 mu
+      // 25 mu  100  500  1.69 mu
+      // 25 mu  150  500  1.4  mu
+      // 25 mu  285  500  1.08 mu
+      // 25 mu  285  700  1.13 mu
+      // 25 mu  450  500  0.93 mu
+      // 17 mu  285  500  0.73 mu
+      // 17 mu  285  700  0.77 mu
+      // 10 mu  285  500  0.43 mu
       dx1qvsxm.Fill( xm, dx1 );
       madx1qvsxm.Fill( xm, fabs(dx1) ); // inverted U-shape
     }
@@ -1482,16 +1494,41 @@ int main( int argc, char* argv[] )
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-  cout << "done: events " << nev << endl;
   histoFile->Write();
   histoFile->ls();
   histoFile->Close();
   cout << endl;
-  cout << "  thickness      " << depth << " um" << endl;
-  cout << "  incident angle " << turn*wt << " deg" << endl;
-  cout << "  track width    " << width << " um" << endl;
+
+  cout << "done: events " << nev << endl;
+
+  cout << "  particle type     " << npm0 << endl;
+  cout << "  kinetic energy    " << Ekin0 << " MeV" << endl;
+  cout << "  number of events  " << nev << endl;
+  cout << "  pixel pitch       " << pitch << " um" << endl;
+  cout << "  thickness         " << depth << " um" << endl;
+  cout << "  incident angle    " << turn*wt << " deg" << endl;
+  cout << "  track width       " << width << " um" << endl;
+  cout << "  temperature       " << temp << " K" << endl;
+  cout << "  readout threshold " << thr << " e" << endl;
+  cout << "  cross talk        " << cx*100 << "%" << endl;
+
+  cout
+    << endl
+    << ( (j) ? "  holes" : "  electrons" ) << endl
+    << "  mobility for " << Efield << " V/cm"
+    << ": vm " << vm // cm/s = 100 um / ns
+    << ", Ec " << Ec
+    << ", mu0 " << mu0 << endl
+    << "  beta " << beta
+    << ", mu " << mu
+    << ", v " << vd << " cm/s"
+    << " = " << vd/1e5 << " mu/ns" << endl
+    << "  D " << D
+    << ", rms " << sqrt(2*D*4e-9)*1e4 << " mu" // for 4 ns drift
+    << endl;
+
   cout << endl
-       << histoFile->GetName() << endl;
+       << "  " << histoFile->GetName() << endl;
   cout << endl;
 
 } // main
