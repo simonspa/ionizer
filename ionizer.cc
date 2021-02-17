@@ -131,6 +131,8 @@ int main( int argc, char* argv[] )
 
   bool fast = 1; // default is fast
 
+  uint64_t seed = 0;
+
   for( int i = 1; i < argc; ++i ) {
 
     if( !strcmp( argv[i], "-p" ) )
@@ -156,6 +158,9 @@ int main( int argc, char* argv[] )
 
     if( !strcmp( argv[i], "-f" ) )
       fast = 0; // full ionization, not fast: simulate each e-h pair
+
+    if( !strcmp( argv[i], "-s" ) )
+      seed = atoi( argv[++i] ); // random seed
 
     if( !strcmp( argv[i], "-h" ) ) {
       cout
@@ -422,7 +427,12 @@ int main( int argc, char* argv[] )
 
   double atnu = 6.0221367e23 * rho / AW; // atnu = # of atoms per cm**3
 
-  rgen.seed( time(NULL) ); // seconds since 1.1.1970
+  if(seed != 0) {
+      std::cout << "SEEDING with " << seed << std::endl;
+      rgen.seed(seed); // seconds since 1.1.1970
+  } else {
+      rgen.seed( time(NULL) ); // seconds since 1.1.1970
+  }
 
   // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
   // INITIALIZE ENERGY BINS
