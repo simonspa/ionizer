@@ -1452,10 +1452,11 @@ double trian( double x ) // x = -1..1
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gena1()
 {
-    l31:
-    double r1 = unirnd(rgen);
-    double r2 = unirnd(rgen);
-    if( alph1( r1 ) > 1.8783*r2 ) goto l31; // rejection method
+    double r1 = 0, r2 = 0;
+    do {
+        r1 = unirnd(rgen);
+        r2 = unirnd(rgen);
+    } while(alph1(r1) > 1.8783*r2); // rejection method
 
     return r1;
 }
@@ -1463,10 +1464,11 @@ double gena1()
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gena2()
 {
-    l32:
-    double r1 = unirnd(rgen);
-    double r2 = unirnd(rgen);
-    if( alph2( r1 ) > 1.27324*r2 ) goto l32; // rejection method
+    double r1 = 0, r2 = 0;
+    do {
+        r1 = unirnd(rgen);
+        r2 = unirnd(rgen);
+    } while(alph2(r1) > 1.27324*r2); // rejection method
 
     return r1;
 }
@@ -1474,11 +1476,11 @@ double gena2()
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gentri() // -1..1
 {
-    l33:
-    double r1 = unirnd(rgen);
-    double r2 = unirnd(rgen);
-    double x = -1 + 2*r1;
-    if( trian(x) > r2 ) goto l33; // rejection method
+    double x = 0, r2 = 0;
+    do {
+        x = -1 + 2*unirnd(rgen);
+        r2 = unirnd(rgen);
+    } while(trian(x) > r2); // rejection method
 
     return x;
 }
@@ -1638,11 +1640,12 @@ void shells( double Eg, std::stack <double> &veh )
             double rEv = (1+r)*Ev; // 0..2*Ev
             veh.push( augde[is][ks] - rEv ); // adjust for energy conservation
 
-            l654:
-            double rv = unirnd(rgen);
-            double Eh1 = rv * rEv;
-            double Eh2 = (1-rv) * rEv;
-            if( Eh1 > Ev || Eh2 > Ev ) goto l654; // holes stay below valence band edge (12 eV)
+            double Eh1 = 0, Eh2 = 0;
+            do {
+                double rv = unirnd(rgen);
+                Eh1 = rv * rEv;
+                Eh2 = (1-rv) * rEv;
+            } while(Eh1 > Ev || Eh2 > Ev); // holes stay below valence band edge (12 eV)
 
             veh.push( Eh1 );
             veh.push( Eh2 );
@@ -1801,11 +1804,12 @@ void TRL1MM( double Ev, std::stack <double> &veh )
 
     // ASSIGN ENERGIES TO THE HOLES
 
-    l63:
-    double rv = unirnd(rgen);
-    double Eh1 = rv * rEv;
-    double Eh2 = (1-rv) * rEv;
-    if( Eh1 > Ev || Eh2 > Ev ) goto l63; // holes stay below valence band edge (12 eV)
+    double Eh1 = 0, Eh2 = 0;
+    do {
+        double rv = unirnd(rgen);
+        Eh1 = rv * rEv;
+        Eh2 = (1-rv) * rEv;
+    } while(Eh1 > Ev || Eh2 > Ev); // holes stay below valence band edge (12 eV)
 
     veh.push( Eh1 );
     veh.push( Eh2 );
@@ -1824,14 +1828,13 @@ void TRL23MM( double Ev, std::stack <double> &veh )
     veh.push( augde[2][1] - rEv );
 
     // ASSIGN ENERGIES TO THE HOLES
-
-    l62:
-    double rv = unirnd(rgen);
-    double Eh1 = rv * rEv;
-    double Eh2 = (1-rv) * rEv;
-    if( Eh1 > Ev || Eh2 > Ev ) goto l62; // holes stay below valence band edge (12 eV)
+    double Eh1 = 0, Eh2 = 0;
+    do {
+        double rv = unirnd(rgen);
+        Eh1 = rv * rEv;
+        Eh2 = (1-rv) * rEv;
+    } while(Eh1 > Ev || Eh2 > Ev); // holes stay below valence band edge (12 eV)
 
     veh.push( Eh1 );
     veh.push( Eh2 );
-
 } // TRL23MM
