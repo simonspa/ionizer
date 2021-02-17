@@ -1,17 +1,19 @@
-// simulation of ionization by charged particle tracks in silicon
-// triplets, edge-on with turn
 
-// time ionizer3 -n 10100 -t 150 -p 25 -a 9.5 -c 0.05 -e 5000
+// simulation of ionization by charged particle tracks in silicon
+// z = along track: columns
+// x = transverse: rows, turn angle in z-x
+// y = vertical = drift
+
+// time ionizer -n 10100 -p 25 -d 285 -t 500 -a 9.5 -e 5000 -c 0.02
 
 // -n events
-// -t Si thickness [um]
-// -p pixel size [um]
-// -c pixel threshold cut [fraction]
+// -p pixel width [mu]
+// -d pixel Dicke [mu]
+// -t pixel threshold [e]
+// -c cross talk [fraction]
+// -a angle of incidence [deg] default is ideal 2-pix
 // -e kinetic energy [MeV]
-// -a angle of incidence [deg]
-// -s seed
-
-// root -l psi/r4s/resvsgeo.C
+// -f not fast
 
 // History:
 
@@ -44,12 +46,12 @@
 // EMERC.TAB
 
 // Output file:
-// ionizer3.root
+// ionizer.hist
 
 #include <cstdlib> // atoi
 #include <iostream> // std::cout
 #include <fstream> // files
-#include <sstream> // std::stringstream
+#include <sstream> // stringstream
 #include <cmath> // log
 #include <random>
 #include <ctime>
@@ -72,8 +74,8 @@ struct delta {
 };
 
 struct cluster {
-    unsigned neh;
-    double x; // [cms] position
+    int neh;
+    double x; // position
     double y;
     double z;
     double E; // [eV] generating particle
@@ -116,66 +118,97 @@ int main( int argc, char* argv[] )
 
     unsigned nev = 10*1000;
 
-    double tmic = 150; // [um] thickness
+    double depth = 285; // [mu] pixel depth
+
+    double pitch = 25; // [mu] pixels size
+
+    double angle = 999; // flag
+
+    double thr = 500; // threshold [e]
+
+    double cx = 0; // cross talk
 
     double Ekin0 = 5000; // [MeV] kinetic energy
 
-    double pitch = 25; // [um] pixels size
-
-    double thr = 0.05; // fraction of peak signal
-
     bool fast = 1; // default is fast
-
-    double angle = 999; // flag
 
     uint64_t seed = 0;
 
     for( int i = 1; i < argc; ++i ) {
 
-        if( !strcmp( argv[i], "-n" ) )
-        nev = atoi( argv[++i] );
-
-        if( !strcmp( argv[i], "-t" ) )
-        tmic = atof( argv[++i] ); // [um]
-
-        if( !strcmp( argv[i], "-e" ) )
-        Ekin0 = atof( argv[++i] ); // [MeV]
-
-        if( !strcmp( argv[i], "-f" ) )
-        fast = 0; // not fast, simulated each e-h pair
-
-        if( !strcmp( argv[i], "-c" ) )
-        thr = atof( argv[++i] ); // pixel threshold [relative]
-
         if( !strcmp( argv[i], "-p" ) )
-        pitch = atof( argv[++i] ); // [um]
+        pitch = atof( argv[++i] ); // [mu]
+
+        if( !strcmp( argv[i], "-d" ) )
+        depth = atof( argv[++i] ); // [mu]
 
         if( !strcmp( argv[i], "-a" ) )
         angle = atof( argv[++i] ); // [deg]
 
+        if( !strcmp( argv[i], "-t" ) )
+        thr = atof( argv[++i] ); // pixel threshold [e]
+
+        if( !strcmp( argv[i], "-c" ) )
+        cx = atof( argv[++i] ); // cross talk fraction
+
+        if( !strcmp( argv[i], "-e" ) )
+        Ekin0 = atof( argv[++i] ); // [MeV]
+
+        if( !strcmp( argv[i], "-n" ) )
+        nev = atoi( argv[++i] );
+
+        if( !strcmp( argv[i], "-f" ) )
+        fast = 0; // full ionization, not fast: simulate each e-h pair
+
         if( !strcmp( argv[i], "-s" ) )
         seed = atoi( argv[++i] ); // random seed
-    } // argc
 
-    thr = thr*75*tmic; // [eh]
+        if( !strcmp( argv[i], "-h" ) ) {
+            std::cout
+            << "  simulate ionization by charged particles in silicon" << std::endl
+            << "  usage: ionizer [option] [option] [option]" << std::endl
+            << "         produces ionizer.hist" << std::endl
+            << "  options:" << std::endl
+            << "    -z pixel length [mu] (default 150)" << std::endl
+            << "    -p pixel width [mu] (default 25)" << std::endl
+            << "    -d pixel depth [mu] (default 285)" << std::endl
+            << "    -a angle of incidence [deg] (default atan(p/d))" << std::endl
+            << "    -t readout threshold [e] (default 500)" << std::endl
+            << "    -c cross talk fraction (default 0)" << std::endl
+            << "    -e incident kinetic energy [MeV] (default 5000)" << std::endl
+            << "    -f full ionization (slow, default neh=de/3.645)" << std::endl
+            << "    -n number of events (default 10000)" << std::endl
+            ;
+            return 0;
+        }
+
+    } // argc
 
     double pi = 3.1415926536;
     double wt = 180/pi;
     double twopi = 2*pi;
+    double w2 = sqrt(2);
 
-    double turn = atan( pitch / tmic ); // [rad] default
-    if( angle < 91 )
+    double turn = atan( pitch / depth ); // [rad] default
+    if( fabs(angle) < 91 )
     turn = angle/wt;
 
-    double width = tmic*tan(turn); // [um] projected track
+    double width = depth*tan(turn); // [mu] projected track, default: pitch
 
-    double explicit_delta_energy_cut_keV =  2;
+    // [V/cm] mean electric field: Vbias-Vdepletion/2
+    double Efield = (120-30)/depth*1e4; // UHH
+    //double Efield = (70-60)/depth*1e4; // DepFET
+
+    // delta ray range: 1 um at 10 keV (Mazziotta 2004)
+    //double explicit_delta_energy_cut_keV = 2; Dec 2019
+    double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
+    //double explicit_delta_energy_cut_keV = 99; // no effect on resolution
 
     // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
     unsigned npm0 = 4; // e
 
-    double temp = 300; // [K]
+    double temp = 298; // [K]
 
     double elmm = 0.51099906; // e mass [MeV]
     double elm = 1e6 * elmm; // me [eV]
@@ -184,99 +217,206 @@ int main( int argc, char* argv[] )
     double fac = 8.0 * pi * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
     double log10 = log(10);
 
-    std::cout << "  particle type    " << npm0 << std::endl;
-    std::cout << "  kinetic energy   " << Ekin0 << " MeV" << std::endl;
-    std::cout << "  number of events " << nev << std::endl;
-    std::cout << "  thickness        " << tmic << " um" << std::endl;
-    std::cout << "  pixel pitch      " << pitch << " um" << std::endl;
-    std::cout << "  incident angle   " << turn*wt << " deg" << std::endl;
-    std::cout << "  track path       " << width << " um" << std::endl;
-    std::cout << "  temperature      " << temp << " K" << std::endl;
+    std::cout << "  particle type     " << npm0 << std::endl;
+    std::cout << "  kinetic energy    " << Ekin0 << " MeV" << std::endl;
+    std::cout << "  number of events  " << nev << std::endl;
+    std::cout << "  pixel pitch       " << pitch << " um" << std::endl;
+    std::cout << "  pixel depth       " << depth << " um" << std::endl;
+    std::cout << "  incident angle    " << turn*wt << " deg" << std::endl;
+    std::cout << "  track width       " << width << " um" << std::endl;
+    std::cout << "  temperature       " << temp << " K" << std::endl;
+    std::cout << "  readout threshold " << thr << " e" << std::endl;
+    std::cout << "  cross talk        " << cx*100 << "%" << std::endl;
+
+    // mobility from pixelav:
+    // 0 = e, 1 = h
+
+    int j = 0; // e CMS, B2 pixel
+    //int j = 1; // h for strips
+
+    double cvm[2] = { 1.53e9, 1.62e8 }; // [cm/s] vmax at temp=1K
+    double evm[2] = { -0.87, -0.52 };
+    double vm = cvm[j] * pow( temp, evm[j] );
+
+    double cec[2] = { 1.01, 1.24 }; // [V/cm] Ecrit
+    double eec[2] = { 1.55, 1.68 };
+    double Ec = cec[j] * pow( temp, eec[j] );
+    double mu0 = vm / Ec;
+
+    double cbeta[2] = { 0.0257, 0.46 };
+    double ebeta[2] = { 0.66, 0.17 };
+    double beta = cbeta[j] * pow( temp, ebeta[j] );
+    double ibeta = 1 / beta;
+
+    double d2 = Efield / Ec;
+    double d3 = pow( d2, beta ) + 1.;
+    double mu = mu0 / pow( d3, ibeta ); // mu0 / ( 1 + (E/Ec)^b )^(1/b)
+    const double vd = Efield*mu; // [cm/s]
+
+    // diffusion from mobility: D = kTmu/e
+    // e = 1.602e-19 C
+    // k = 1.38e-23 J/K
+    // k/e = 8.6e-5 eV/K
+
+    const double D = 8.61733e-5 * temp * mu; // diffuson constant
+
+    std::cout
+    << std::endl
+    << "   mobility for " << Efield << " V/cm"
+    << ": vm " << vm // cm/s = 100 um / ns
+    << ", Ec " << Ec
+    << ", mu0 " << mu0 << std::endl
+    << "  beta " << beta
+    << ", mu " << mu
+    << ", v " << vd << " cm/s"
+    << " = " << vd/1e5 << " mu/ns" << std::endl
+    << "  D " << D
+    << ", rms " << sqrt(2*D*4e-9)*1e4 << " mu" // for 4 ns drift
+    << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // book histos
 
-    TFile * histoFile = new TFile( "ionizer3.root", "RECREATE" );
+    TFile * histoFile = new
+    TFile( Form( "ionizer_p%i_w%i_d%i_t%i_c%i.hist",
+    int(pitch+0.5), int(width+0.5), int(depth+0.5),
+    int(thr), int(100*cx+0.1) ),
+    "RECREATE" );
 
     // book histos:
 
-    TH1I * h1z[11];
-    TH2I * h2zx[11];
-    for( unsigned i = 0; i < 11; ++i ) {
-        h1z[i] = new
-        TH1I( Form( "z%02i", i ),
-        Form( "z event %i;z [#mum];clusters [eh-pairs]", i ),
-        3*tmic, -1.5*tmic, 1.5*tmic );
-        h2zx[i] = new
-        TH2I( Form( "zx%02i", i ),
-        Form( "z-x event %i;x [#mum];z [#mum];clusters [eh-pairs]", i ),
-        4*width, -2*width, 2*width, 3*tmic, -1.5*tmic, 1.5*tmic );
-    }
-
-    TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]", 140, -3, 4 );
-    TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]", 140, -3, 4 );
+    TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]",
+    140, -3, 4 );
+    TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]",
+    140, -3, 4 );
 
     TH1I hstep5( "step5", "step length;step length [#mum];steps", 500, 0, 5 );
     TH1I hstep0( "step0", "step length;step length [#mum];steps", 500, 0, 0.05 );
-    TH1I hzz( "z", "z;depth z [#mum];steps", tmic, 0, tmic );
-
-    TH2I * h2xy = new
-    TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]",
-    400, -200, 200, 400, -200, 200 );
-    TH2I * h2rz = new
-    TH2I( "rz","R-zclusters;z [#mum];R [#mum];clusters [eh-pairs]",
-    tmic, 0, tmic, 200, 0, 200 );
+    TH1I hzz( "zz", "z;depth z [#mum];steps", depth, 0, depth );
 
     TH1I hde0( "de0", "step E loss;step E loss [eV];steps", 200, 0, 200 );
     TH1I hde1( "de1", "step E loss;step E loss [eV];steps", 100, 0, 5000 );
     TH1I hde2( "de2", "step E loss;step E loss [keV];steps", 200, 0, 20 );
-    TH1I hdel( "del", "log step E loss;log_{10}(step E loss [eV]);steps", 160, 0, 8 );
-    TH1I htet( "tet", "delta emission angle;delta emission angle [deg];inelasic steps", 180, 0, 90 );
-
-    TH1I hcleh( "cleh", "cluster neh;log_{10}(cluster eh [pairs]);clusters", 80, 0, 4 );
-    TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]);<w> [eV/pair]", 80, 0, 4 );
-    TH1I hreh( "reh", "eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
-    TH1I hzeh( "zeh", "Poisson eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
+    TH1I hdel( "del", "log step E loss;log_{10}(step E loss [eV]);steps", 140, 0, 7 );
+    TH1I htet( "tet", "delta emission angle;delta emission angle [deg];inelasic steps",
+    180, 0, 90 );
+    TH1I hnprim( "nprim", "primary eh;primary e-h;scatters", 21, -0.5, 20.5 );
+    TH1I hlogE( "logE", "log Eeh;log_{10}(E_{eh}) [eV]);eh", 140, 0, 7 );
+    TH1I hlogn( "logn", "log neh;log_{10}(n_{eh});clusters",  80, 0, 4 );
 
     TH1I hscat( "scat", "elastic scattering angle;scattering angle [deg];elastic steps",
     180, 0, 180 );
 
-    TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*tmic*5, 0, 4*tmic*5 );
+    TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*depth*5, 0, 4*depth*5 );
 
+    double lastbin = 5*0.35*depth; // 350 eV/micron
+    if( Ekin0 < 1.1 )
+    lastbin = 1.05*Ekin0*1e3; // [keV]
     TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV",
-    std::max(100,int(3*5*0.35*tmic)), 0, int(3*5*0.35*tmic) );
+    std::max(100,int(lastbin)), 0, int(lastbin) );
+    TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta",
+    std::max(100,int(lastbin)), 0, int(lastbin) );
+    TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
+    std::max(100,int(lastbin)), 0, int(lastbin) );
 
     TH1I hteh( "teh", "total e-h;total charge [ke];tracks",
-    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(3*10*0.1*tmic)) );
+    std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
+    TH1I hq0( "q0", "normal charge;normal charge [ke];tracks",
+    std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
+    TH1I hrms( "rms", "RMS e-h;charge RMS [e];tracks",
+    100, 0, 50*depth );
 
-    TH1I hq0( "q0", "row 0 normal charge;normal charge [ke];row 0",
-    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(10*0.1*tmic)) );
-    TH1I hq1( "q1", "row 1 normal charge;normal charge [ke];row 1",
-    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(10*0.1*tmic)) );
-    TH1I hq2( "q2", "row 2 normal charge;normal charge [ke];row 2",
-    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(10*0.1*tmic)) );
+    TH1I * h1zev[11];
+    TH2I * h2zxev[11];
+    for( unsigned i = 0; i < 11; ++i ) {
+        h1zev[i] = new
+        TH1I( Form( "z%02i", i ),
+        Form( "z event %i;z [#mum];clusters [eh-pairs]", i ),
+        4*depth, 0, depth );
+        h2zxev[i] = new
+        TH2I( Form( "zx%02i", i ),
+        Form( "z-x event %i;x [#mum];z [#mum];clusters [eh-pairs]", i ),
+        4*2*pitch, -pitch, pitch, 4*depth, 0, depth );
+    }
 
-    TH1I hdxt( "dxt", "dxt;dxt [#mum];tracks", 200, -width, width );
-    TH1I hdx3( "dx3", "dx3;dx3 [#mum];tracks", 200, -width, width );
-    TProfile madx3vsq( "madx3vsq",
-    "MAD(#Deltax) vs normalized charge;normal charge [ke];MAD(#Deltax) [#mum]",
-    100, 0, 2*0.1*tmic );
-    TProfile dx3vsxm( "dx3vsxm",
-    "#Deltax vs x;track x [#mum];<#Deltax> [#mum]",
-    width, -0.5*width, 0.5*width );
-    TProfile madx3vsxm( "madx3vsxm",
+    TH2I * h2xy = new
+    TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]",
+    400, -200, 200, 400, -200, 200 );
+    TH2I * h2zx = new
+    TH2I( "zx","z-x clusters;x [#mum];z [#mum];clusters [eh-pairs]",
+    4*pitch, -2*pitch, 2*pitch, depth, 0, depth );
+
+    TH1I hdtime( "dtime", "drift time;drift time [ns];clusters", 100, 0, 10+20*j );
+    TH1I hdiff( "diff", "diffusion width;diffusion width [#mum];clusters", 100, 0, 10 );
+    TH1I htf( "tf", "Gaussian tail fraction;Gausian tail fraction;clusters", 100, 0, 1 );
+    TProfile tfvsx( "tfvsx", "Gaussian tail fraction vs x;x [#mum];Gausian tail fraction",
+    200, -0.5*pitch, 0.5*pitch );
+
+    TH1I hcleh( "cleh", "cluster neh;log_{10}(cluster eh [pairs]);clusters", 80, 0, 4 );
+    TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]);<w> [eV/pair]",
+    80, 0, 4 );
+    TH1I hreh( "reh", "eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
+
+    TH1I heta0( "eta0", "eta;eta;tracks", 201, -1.005, 1.005 );
+    TProfile eta0vsxm( "eta0vsxm", "eta vs track;track x [#mum];<eta>",
+    200, -0.5*pitch, 0.5*pitch );
+    TH1I hdx0( "dx0", "dx0;#Deltax [#mum];tracks",
+    501, -pitch*1.001, pitch*1.001 );
+    TProfile madx0vsq( "madx0vsq",
+    "MAD(#Deltax) vs charge;charge [ke];MAD(#Deltax) [#mum]",
+    100, 0, 2*0.1*depth );
+    TH1I hdx0q( "dx0q", "dx0 Landau peak;#Deltax [#mum];tracks",
+    501, -pitch*1.001, pitch*1.001 );
+    TProfile dx0qvsxm( "dx0qvsxm", "#Deltax vs x;track x [#mum];<#Deltax> [#mum]",
+    pitch, -0.5*pitch, 0.5*pitch );
+    TProfile
+    madx0qvsxm( "madx0qvsxm", "MAD(#Deltax) vs x;track x [#mum];MAD(#Deltax) [#mum]",
+    pitch, -0.5*pitch, 0.5*pitch );
+    TProfile
+    madx0qvsxm0( "madx0qvsxm0",
+    "MAD(#Deltax) vs x no delta;track x [#mum];MAD(#Deltax) [#mum]",
+    pitch, -0.5*pitch, 0.5*pitch );
+    TProfile
+    madx0qvsxm1( "madx0qvsxm1",
+    "MAD(#Deltax) vs x delta;track x [#mum];MAD(#Deltax) [#mum]",
+    pitch, -0.5*pitch, 0.5*pitch );
+
+    // threshold:
+
+    TH1I hpxq1( "pxq1", "thresholded pixel charge;pixel charge [ke];pixels",
+    std::max(100,int(10*0.1*depth/1)), 0, std::max(1,int(5*0.1*depth/1)) );
+    TH1I hq1( "q1", "thresholded charge;charge [ke];tracks",
+    std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
+    TH1I hnpx1( "npx1", "npx after threshold;npx;tracks", 4, 0.5, 4.5 );
+    TProfile npx1vsxm( "npx1vsxm", "npx threshold vs track;track x [#mum];<npx>",
+    200, -0.5*pitch, 0.5*pitch );
+    TH1I heta1( "eta1", "eta threshold;eta;tracks", 201, -1.005, 1.005 );
+    TProfile eta1vsxm( "eta1vsxm", "eta threshold vs track;track x [#mum];<eta>",
+    200, -0.5*pitch, 0.5*pitch );
+    TProfile x1vsxm( "x1vsxm", "xcog threshold vs track;track x [#mum];<cog> [#mum]",
+    200, -0.5*pitch, 0.5*pitch );
+    TH1I hdx1( "dx1",
+    "dx threshold;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TProfile madx1vsq( "madx1vsq",
+    "MAD(#Deltax) vs charge;charge [ke];MAD(#Deltax) [#mum]",
+    100, 0, 2*0.1*depth );
+    TH1I hdx1q( "dx1q",
+    "dx threshold Landau peak;#Deltax [#mum];tracks",
+    501, -pitch*1.001, pitch*1.001 );
+    TProfile dx1qvsxm( "dx1qvsxm", "#Deltax vs x;track x [#mum];<#Deltax> [#mum]",
+    pitch, -0.5*pitch, 0.5*pitch );
+    TProfile madx1qvsxm( "madx1qvsxm",
     "MAD(#Deltax) vs x;track x [#mum];MAD(#Deltax) [#mum]",
-    width, -0.5*width, 0.5*width );
+    pitch, -0.5*pitch, 0.5*pitch );
 
-    TH1I hdxtc( "dxtc", "dxt Landau peak;dxt [#mum];tracks", 200, -width, width );
-    TH1I hdx3c( "dx3c", "dx3 Landau peak;dx3 [#mum];tracks", 200, -width, width );
-    // dx3c->GetXaxis()->SetRangeUser(-3*dx3c->GetRMS(),3*dx3c->GetRMS());dx3c->Draw()
-
-    TH1I hdxtc85( "dxtc85", "dxt Landau peak;dxt [#mum];tracks", 200, -width, width );
-    TH1I hdx3c85( "dx3c85", "dx3 Landau peak;dx3 [#mum];tracks", 200, -width, width );
-
-    TH1I hdxtc80( "dxtc80", "dxt Landau peak;dxt [#mum];tracks", 200, -width, width );
-    TH1I hdx3c80( "dx3c80", "dx3 Landau peak;dx3 [#mum];tracks", 200, -width, width );
+    TH1I hda1( "da1", "da threshold;#Deltax [#mum];tracks",
+    501, -pitch*1.001, pitch*1.001 );
+    TH1I hda1q( "da1q",
+    "da threshold Landau peak;#Deltax [#mum];tracks",
+    501, -pitch*1.001, pitch*1.001 );
+    TProfile mada1qvsxm( "mada1qvsxm",
+    "MAD(#Deltaa) vs x;track x [#mum];MAD(#Deltaa) [#mum]",
+    pitch, -0.5*pitch, 0.5*pitch );
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // silicon:
@@ -288,17 +428,12 @@ int main( int argc, char* argv[] )
 
     double atnu = 6.0221367e23 * rho / AW; // atnu = # of atoms per cm**3
 
-    double thck = tmic * 1e-4; // [cm]
-
     if(seed != 0) {
         std::cout << "SEEDING with " << seed << std::endl;
         rgen.seed(seed); // seconds since 1.1.1970
     } else {
         rgen.seed( time(NULL) ); // seconds since 1.1.1970
     }
-
-    // on cmspixel:
-    //rgen.seed( 17 ); // long delta, Bragg-peak
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // INITIALIZE ENERGY BINS
@@ -323,7 +458,9 @@ int main( int argc, char* argv[] )
         dE[j]  = E[j+1] - E[j];
     }
 
-    std::cout << "n2 " << n2 << ", Emin " << Emin << ", um " << um
+    std::cout
+    << std::endl
+    << "  n2 " << n2 << ", Emin " << Emin << ", um " << um
     << ", E[nume] " << E[nume] << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
@@ -503,26 +640,23 @@ int main( int argc, char* argv[] )
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-    std::cout << "-----------------------------------------------------------------\n";
-    std::cout << "STRAG: " << Ekin0 << " MeV of " << npm0 << " in " << thck*1e4 << " um Si for "
-    << nev << " events\n";
-    std::cout << "-----------------------------------------------------------------\n";
-
     // EVENT LOOP:
 
     for( unsigned iev = 0; iev < nev; ++ iev ) {
 
+        std::cout << iev << std::endl;
+
         std::stack <delta> deltas;
 
-        // put track on std::stack
+        // put track on std::stack:
 
-        double xmid = width * ( unirnd(rgen) - 0.5 ); // [um] -w/2..w/2 track mid
+        double xm = pitch * ( unirnd(rgen) - 0.5 ); // [mu] -p/2..p/2 at track mid
 
         delta t;
         t.E = Ekin0; // [MeV]
-        t.x = ( xmid - 0.5*width - pitch ) * 1e-4; // [cm] entry point
+        t.x = ( xm - 0.5*width ) * 1e-4; // entry point is left;
         t.y = 0; // [cm]
-        t.z = -1.5*thck;
+        t.z = 0; // pixel from 0 to depth [cm]
         t.u = sin(turn);
         t.v = 0;
         t.w = cos(turn); // along z
@@ -532,8 +666,10 @@ int main( int argc, char* argv[] )
         unsigned it = 0;
         unsigned nscat = 0; // elastic
         unsigned nloss = 0; // ionization
+        unsigned ndelta = 0;
         double tde = 0.0;
         unsigned meh = 0;
+        unsigned sumeh2 = 0;
         std::vector <cluster> clusters;
         double Ekprev = 9e9; // update flag
 
@@ -543,9 +679,9 @@ int main( int argc, char* argv[] )
             deltas.pop();
 
             double Ek = t.E; // [MeV] kinetic energy
-            double xx  = t.x;
-            double yy  = t.y;
-            double zz  = t.z;
+            double xx = t.x;
+            double yy = t.y;
+            double zz = t.z;
             double vect[3];
             vect[0] = t.u; // direction cosines
             vect[1] = t.v;
@@ -557,10 +693,9 @@ int main( int argc, char* argv[] )
             double xlel = 1;
             double gn = 1;
             double totsig[lime];
-            double zmax = zz;
             double ptm = elmm; // e 0.51100 MeV
 
-            std::cout << "    delta " << Ek*1e3 << " keV"
+            std::cout << "  delta " << Ek*1e3 << " keV"
             << ", cost " << t.w
             << ", u " << t.u
             << ", v " << t.v
@@ -581,14 +716,14 @@ int main( int argc, char* argv[] )
                     double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma = p/m
                     double pmom = ptm*bg; // [MeV/c]
                     double betasq = bg*bg / ( 1 + bg*bg );
-                    double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam ); // bug fixed
+                    double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam );
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
                     if( npm == 4 ) Emax = 0.5*Ek;
                     // std::maximum energy loss for incident electrons
                     Emax = 1e6 * Emax; // eV
 
                     // Define parameters and calculate Inokuti"s sums,
-                    // Sect 3.3 in Rev Mod Phys 43, 297 (1971)
+                    // S ect 3.3 in Rev Mod Phys 43, 297 (1971)
 
                     double dec = zi*zi * atnu * fac / betasq;
                     double bemx = betasq / Emax;
@@ -657,7 +792,8 @@ int main( int argc, char* argv[] )
 
                         sig[4][j] = 2 * sig[6][j] * uef;
 
-                        // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
+                        // there is a factor of 2 because the integral was over d(lnK)
+                        // rather than d(lnQ)
 
                         sig[5][j] = 0;
 
@@ -677,6 +813,19 @@ int main( int argc, char* argv[] )
                         double HE2  = sig[5][j] * dec;
                         H[j] = HE2 / ( E[j]*E[j] );
                         stpw += H[j] * E[j] * dE[j]; // dE/dx
+                        /*
+                        if( ndelta == 0 )
+                        std::cout << j
+                        << "  " << E[j]
+                        << "  " << dfdE[j]
+                        << "  " << sgg
+                        << "  " << sgh
+                        << "  " << sig[1][j]
+                        << "  " << sig[3][j]
+                        << "  " << sig[4][j]
+                        << "  " << sig[5][j]
+                        << "  " << HE2 << std::endl; // compare Bichsel CONV-5000.OPA: agree
+                        */
                         nlast = j;
 
                     } // j
@@ -727,7 +876,7 @@ int main( int argc, char* argv[] )
                     << ", norm " << totsig[nlast] << std::endl
                     << "  inelastic " << 1e4/xm0 << "  " << 1e4/sst
                     << ", elastic " << 1e4/xlel << " um"
-                    << ", mean dE " << stpw*thck*1e-3 << " keV"
+                    << ", mean dE " << stpw*depth*1e-4*1e-3 << " keV"
                     << std::endl << std::flush;
 
                 } // update
@@ -749,12 +898,12 @@ int main( int argc, char* argv[] )
 
                 hzz.Fill( zz*1e4 );
 
-                if( zz > zmax ) zmax = zz;
-
-                if( zz < -1.5*thck || zz > 1.5*thck ) break;
+                if( zz < 0 || zz > depth*1e-4 ) break; // exit back or front
 
                 xx += xr*vect[0];
                 yy += xr*vect[1];
+
+                if( fabs( yy ) > 0.0200 ) break; // save time
 
                 ++it;
 
@@ -771,8 +920,8 @@ int main( int argc, char* argv[] )
 
                     double Eg = E[je-1] + ( E[je] - E[je-1] ) * unirnd(rgen); // [eV]
 
-                    hde0.Fill( Eg );
-                    hde1.Fill( Eg );
+                    hde0.Fill( Eg ); // M and L shells
+                    hde1.Fill( Eg ); // K shell
                     hde2.Fill( Eg*1e-3 );
                     hdel.Fill( log(Eg)/log10 );
 
@@ -802,8 +951,15 @@ int main( int argc, char* argv[] )
                     // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / Ek ) ! wrong
 
                     //double cost = sqrt( Eg / (twome + Eg) ); // M. Swartz
-                    double cost = sqrt( Eg / (twome + Eg) * ( Ek + twome*1e-6 ) / Ek ); // Penelope, Geant4
-                    double sint = sqrt( 1 - cost*cost ); // mostly 90 deg
+                    double cost = sqrt( Eg / (twome + Eg) * ( Ek + twome*1e-6 ) / Ek );
+                    // Penelope, Geant4
+                    double sint;
+                    if( cost*cost <= 1 )
+                    sint = sqrt( 1 - cost*cost ); // mostly 90 deg
+                    else {
+                        std::cout << " NAN 1-cost " << 1-cost << ", 1-cost^2 " << 1-cost*cost << std::endl;
+                        sint = 0;
+                    }
                     double phi = 2*pi*unirnd(rgen);
 
                     // G4PenelopeIonisationModel.cc
@@ -832,7 +988,7 @@ int main( int argc, char* argv[] )
                     din[1] = sint*sin(phi);
                     din[2] = cost;
 
-                    htet.Fill( wt*asin(sint) );
+                    htet.Fill( wt*asin(sint) ); // peak at 90, tail to 45, elastic forward
 
                     // transform into detector system:
 
@@ -852,13 +1008,22 @@ int main( int argc, char* argv[] )
                     if( Eg > Ethr )
                     shells( Eg, veh );
 
+                    hnprim.Fill( veh.size() );
+
                     // process e and h
 
-                    unsigned neh = 0;
+                    double sumEeh{0};
+                    unsigned neh{0};
 
                     while( ! veh.empty() ) {
 
                         double Eeh = veh.top();
+
+                        if( Eeh > 1 )
+                        hlogE.Fill( log(Eeh)/log10 );
+                        else
+                        hlogE.Fill( 0 );
+
                         //cout << "    eh "<< veh.size() << ", Eeh " << Eeh << ", neh " << neh << std::endl;
 
                         veh.pop();
@@ -878,17 +1043,22 @@ int main( int argc, char* argv[] )
                             t.npm = 4; // e
                             deltas.push(t);
 
+                            ++ndelta;
+
                             tde -= Eeh; // [eV], avoid double counting
 
                             continue; // next ieh
 
                         } // new delta
 
+                        sumEeh += Eeh;
+
                         // slow down low energy e and h: 95% of CPU time
 
                         while( fast == 0 && Eeh > Ethr ) {
 
-                            double pion = 1 / ( 1 + aaa*105/twopi * sqrt(Eeh-eom0) / pow( Eeh - Ethr, 3.5 ) );
+                            double pion = 1 / ( 1 + aaa*105/twopi * sqrt(Eeh-eom0) /
+                            pow( Eeh - Ethr, 3.5 ) );
                             // for e and h
 
                             if( unirnd(rgen) < pion ) { // ionization
@@ -911,13 +1081,17 @@ int main( int argc, char* argv[] )
                             Eeh = Eeh - eom0; // phonon emission
                             // std::cout << "      fon " << ed
 
-                        } // while Eeh
-
-                        neh += Eeh / 3.645; // quick
+                        } // slow: while Eeh
 
                     } // while veh
 
+                    if( fast ) {
+                        std::poisson_distribution <int> poisson(sumEeh/3.645);
+                        neh = poisson(rgen);
+                    }
+
                     meh += neh;
+                    sumeh2 += neh*neh;
 
                     //cout << "  dE " << Eg << " eV, neh " << neh << std::endl;
 
@@ -925,33 +1099,16 @@ int main( int argc, char* argv[] )
 
                     if( neh > 0 ) {
 
+                        hlogn.Fill( log(neh)/log10 );
+
                         cluster c;
 
                         c.neh = neh;
-                        c.x = xx; // [cm]
+                        c.x = xx;
                         c.y = yy;
                         c.z = zz;
                         c.E = Eg; // [eV]
                         clusters.push_back(c);
-
-                        if( iev < 11 ) {
-                            h1z[iev]->Fill( zz*1e4, neh );
-                            h2zx[iev]->Fill( xx*1e4, zz*1e4, neh );
-                        }
-                        h2xy->Fill( xx*1e4, yy*1e4, neh );
-                        h2rz->Fill( zz*1e4, sqrt( xx * xx + yy * yy ) * 1e4, neh );
-
-                        if( Ek > 0.99*Ekin0 ) { // stopping deltas give ugly spike
-                            hcleh.Fill( log(neh)/log10 ); // per cluster
-                            hreh.Fill( neh/Eg );
-                            wvse.Fill( log(Eg)/log10, Eg/neh );
-                        }
-
-                        // pixelav:
-
-                        std::poisson_distribution <int> poisson(Eg/3.645);
-                        int keh = poisson(rgen);
-                        hzeh.Fill( keh/Eg );
 
                     } // neh
 
@@ -976,7 +1133,8 @@ int main( int argc, char* argv[] )
                         gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
                         double FF = 0.5*pi * E2*E2 * ZA*ZA / (Ek*Ek);
-                        double S0EL = 2*FF / ( gn * ( 2 + gn ) ); // elastic total cross section  [cm2/atom]
+                        double S0EL = 2*FF / ( gn * ( 2 + gn ) );
+                        // elastic total cross section  [cm2/atom]
                         xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
 
                     }
@@ -997,7 +1155,7 @@ int main( int argc, char* argv[] )
                     din[1] = sint*sin(phi);
                     din[2] = cost;
 
-                    hscat.Fill( wt*asin(sint) );
+                    hscat.Fill( wt*asin(sint) ); // forward peak, tail to 90
 
                     // change direction of delta VECT:
 
@@ -1012,9 +1170,9 @@ int main( int argc, char* argv[] )
 
                 } // elastic
 
-            } // inside steps
+            } // while steps
 
-            std::cout << ", zmax " << zmax*1e4 << " um" << std::endl;
+            std::cout << std::endl;
 
             Ekprev = 9e9; // update flag for next delta
 
@@ -1024,14 +1182,14 @@ int main( int argc, char* argv[] )
 
         do i = 1, ncl
         write( 69, "( 3F7.1, x, f9.1, I6 )" )
-        vclu(i,1)*1e4 << vclu(i,2)*1e4 << vclu(i,3)*1e4 << // [um]
+        vclu(i,1)*1e4 << vclu(i,2)*1e4 << vclu(i,3)*1e4 << // [mu]
         vclu(i,4) << // [eV]
         kclu(i)
         enddo
         */
 
-        std::cout << "ev " << iev
-        << ": steps " << it << ", ion " << nloss << ", elas " << nscat
+        std::cout
+        << "  steps " << it << ", ion " << nloss << ", elas " << nscat
         << ", dE " << tde*1e-3 << " keV"
         << ", eh " << meh
         << ", cl " << clusters.size()
@@ -1039,65 +1197,182 @@ int main( int argc, char* argv[] )
 
         hncl.Fill( clusters.size() );
         htde.Fill( tde*1e-3 ); // [keV] energy conservation - binding energy
+        if( ndelta )
+        htde1.Fill( tde*1e-3 ); // [keV]
+        else
+        htde0.Fill( tde*1e-3 ); // [keV]
         hteh.Fill( meh*1e-3 ); // [ke]
+        hq0.Fill( meh*1e-3 ); // [ke]
+        hrms.Fill( sqrt(sumeh2) );
 
-        // pixel row-wise COG from clusters
+        // 4 pixels along x:
 
-        double sumq[3]{0};
-        double sumqx[3]{0};
+        double q1[4];
+        for( int ir = 0; ir < 4; ++ir ) {
+            q1[ir] = 0;
+        }
+
         for( unsigned i = 0; i < clusters.size(); ++i ) {
-            unsigned row = 0; // z = [-1.5,-0.5]*thck
-            if( clusters[i].z > 0.5*thck )
-            row = 2;
-            else if( clusters[i].z > -0.5*thck )
-            row = 1;
-            sumq[row] += clusters[i].neh;
-            sumqx[row] += clusters[i].neh*clusters[i].x;
+
+            double xx = clusters[i].x*1e4; // [mu]
+            double yy = clusters[i].y*1e4; // [mu]
+            double zz = clusters[i].z*1e4; // [mu]
+            int neh = clusters[i].neh;
+
+            if( iev < 11 ) {
+                h1zev[iev]->Fill( zz, neh );
+                h2zxev[iev]->Fill( xx, zz, neh );
+            }
+            h2xy->Fill( xx, yy, neh );
+            h2zx->Fill( xx, zz, neh );
+
+            double Eg = clusters[i].E;
+            hcleh.Fill( log(neh)/log10 ); // per cluster
+            hreh.Fill( neh/Eg );
+            wvse.Fill( log(Eg)/log10, Eg/neh ); // dE per eh pair
+
+            // 0 | 1 | 2 | 3, bins 0 and 3 are half-infinite
+            // diffusion across x crack: |  |  |
+
+            double xc = -pitch; // left
+            int m = 0; // minus = left pixel
+            int p = 1; // plus = right pixel
+            if( xx > 0.5*pitch ) { // nearer x-crack is right
+                xc = pitch;
+                m = 2;
+                p = 3;
+            }
+            else if( xx > -0.5*pitch ) { // mid crack
+                xc = 0;
+                m = 1;
+                p = 2;
+            }
+
+            double dtime = zz*1e-4/vd; // [s] drift time along z (mean speed theorem)
+            double diff = sqrt(2*D*dtime)*1e4; // [mu] rms diffusion (projected or 3D?)
+            double uu = -(xx-xc)/w2/diff; // scaled diffusion distance for erfc
+            double tf = 0.5*erfc(uu); // upper Gaussian tail fraction
+
+            hdtime.Fill( dtime*1e9 );
+            hdiff.Fill( diff );
+            htf.Fill( tf );
+            tfvsx.Fill( xx, tf ); // S-curve, x = 0 is a pixel boundary
+
+            q1[p] += neh*tf;
+            q1[m] += neh*(1-tf);
+
+        } // clusters
+
+        double q0 = q1[0]+q1[1]+q1[2]+q1[3];
+        double eta = (q1[2]-q1[1])/(q1[2]+q1[1]); // central bins
+        heta0.Fill( eta );
+        eta0vsxm.Fill( xm, eta );
+
+        double sumq0 = 0;
+        double sumqx0 = 0;
+        for( int ir = 0; ir < 4; ++ir ) {
+            sumq0 += q1[ir];
+            sumqx0 += q1[ir]*(ir-1.5); // -1.5, -0.5, 0.5, 1.5
+        }
+        double cog0 = sumqx0/sumq0;
+        double dx0 = cog0*pitch - xm; // [mu]
+        hdx0.Fill( dx0 );
+
+        madx0vsq.Fill( q0*1e-3, fabs(dx0) ); // linear rise, too steep
+
+        if( q0 < 95*depth ) { // keep 2/3 in 300 mu
+            hdx0q.Fill( dx0 );
+            dx0qvsxm.Fill( xm, dx0 );
+            madx0qvsxm.Fill( xm, fabs(dx0) ); // inverted U-shape
+            if( ndelta )
+            madx0qvsxm1.Fill( xm, fabs(dx0) ); // inverted U-shape
+            else
+            madx0qvsxm0.Fill( xm, fabs(dx0) ); // inverted U-shape
         }
 
-        hq0.Fill( sumq[0]*cos(turn)*1e-3 ); // [ke]
-        hq1.Fill( sumq[1]*cos(turn)*1e-3 ); // [ke]
-        hq2.Fill( sumq[2]*cos(turn)*1e-3 ); // [ke]
+        // after threshold:
 
-        double x0 = sumqx[0]/sumq[0]; // [cm]
-        double x1 = sumqx[1]/sumq[1];
-        double x2 = sumqx[2]/sumq[2];
-
-        double dxt = x1 - xmid*1e-4;
-        hdxt.Fill( dxt*1e4 );
-
-        double xm = 0.5*(x0+x2); // triplet
-        double dx3 = (x1 - xm) / sqrt(1.5);
-        hdx3.Fill( dx3*1e4 );
-        madx3vsq.Fill( sumq[1]*cos(turn)*1e-3, fabs(dx3) );
-
-        if( sumq[1]*cos(turn) < 90*tmic ) {
-            hdxtc.Fill( dxt*1e4 );
-            hdx3c.Fill( dx3*1e4 );
-            dx3vsxm.Fill( xm, dx3*1e4 );
-            madx3vsxm.Fill( xm, fabs(dx3) );
+        int npx = 0;
+        double sumq1 = 0;
+        double sumqx1 = 0;
+        for( int ir = 0; ir < 4; ++ir ) {
+            if( q1[ir] > thr ) {
+                ++npx;
+                hpxq1.Fill( q1[ir]*1e-3 ); // [ke]
+                sumq1 += q1[ir];
+                sumqx1 += q1[ir]*(ir-1.5); // -1.5, -0.5, 0.5, 1.5
+            }
         }
+        hq1.Fill( sumq1*1e-3 ); // [ke]
+        hnpx1.Fill( npx );
+        npx1vsxm.Fill( xm, npx );
 
-        if( sumq[1]*cos(turn) < 85*tmic ) {
-            hdxtc85.Fill( dxt*1e4 );
-            hdx3c85.Fill( dx3*1e4 );
-        }
+        double eta1 = (q1[2]-q1[1])/(q1[2]+q1[1]); // central bins
+        heta1.Fill( eta1 );
+        eta1vsxm.Fill( xm, eta1 );
 
-        if( sumq[1]*cos(turn) < 80*tmic ) {
-            hdxtc80.Fill( dxt*1e4 );
-            hdx3c80.Fill( dx3*1e4 );
+        double cog1 = sumqx1/sumq1;
+        x1vsxm.Fill( xm, cog1*pitch );
+        double dx1 = cog1*pitch - xm;
+        hdx1.Fill( dx1 );
+
+        madx1vsq.Fill( sumq1*1e-3, fabs(dx1) ); // linear rise, too steep
+
+        if( sumq1 < 95*depth ) { // keep 2/3 in 300 mu
+            hdx1q.Fill( dx1 );
+            // pitch  thck thr  sigma
+            // 25 mu   50  500  2.48 mu
+            // 25 mu  100  500  1.69 mu
+            // 25 mu  150  500  1.4  mu
+            // 25 mu  285  500  1.08 mu
+            // 25 mu  285  700  1.13 mu
+            // 25 mu  450  500  0.93 mu
+            // 17 mu  285  500  0.73 mu
+            // 17 mu  285  700  0.77 mu
+            // 10 mu  285  500  0.43 mu
+            dx1qvsxm.Fill( xm, dx1 );
+            madx1qvsxm.Fill( xm, fabs(dx1) ); // inverted U-shape
         }
 
     } // events
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    std::cout << "done: events " << nev << std::endl;
     histoFile->Write();
     histoFile->ls();
     histoFile->Close();
+    std::cout << std::endl;
+
+    std::cout << "done: events " << nev << std::endl;
+
+    std::cout << "  particle type     " << npm0 << std::endl;
+    std::cout << "  kinetic energy    " << Ekin0 << " MeV" << std::endl;
+    std::cout << "  number of events  " << nev << std::endl;
+    std::cout << "  pixel pitch       " << pitch << " um" << std::endl;
+    std::cout << "  thickness         " << depth << " um" << std::endl;
+    std::cout << "  incident angle    " << turn*wt << " deg" << std::endl;
+    std::cout << "  track width       " << width << " um" << std::endl;
+    std::cout << "  temperature       " << temp << " K" << std::endl;
+    std::cout << "  readout threshold " << thr << " e" << std::endl;
+    std::cout << "  cross talk        " << cx*100 << "%" << std::endl;
+
+    std::cout
+    << std::endl
+    << ( (j) ? "  holes" : "  electrons" ) << std::endl
+    << "  mobility for " << Efield << " V/cm"
+    << ": vm " << vm // cm/s = 100 um / ns
+    << ", Ec " << Ec
+    << ", mu0 " << mu0 << std::endl
+    << "  beta " << beta
+    << ", mu " << mu
+    << ", v " << vd << " cm/s"
+    << " = " << vd/1e5 << " mu/ns" << std::endl
+    << "  D " << D
+    << ", rms " << sqrt(2*D*4e-9)*1e4 << " mu" // for 4 ns drift
+    << std::endl;
+
     std::cout << std::endl
-    << histoFile->GetName() << std::endl;
+    << "  " << histoFile->GetName() << std::endl;
     std::cout << std::endl;
 
 } // main
@@ -1223,14 +1498,12 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]) {
         sig[jt] = sigt; // overwritten!
         xkmn[jt] = xk;
     }
-
-    std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double alph1( double x ) // x = 0..1
 {
-    return 105./16. * (1.-x)*(1-x) * sqrt(x); // integral = 1, std::max = 1.8782971
+    return 105./16. * (1.-x)*(1-x) * sqrt(x); // integral = 1, max = 1.8782971
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
