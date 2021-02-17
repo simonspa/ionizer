@@ -9,6 +9,7 @@
 // -c pixel threshold cut [fraction]
 // -e kinetic energy [MeV]
 // -a angle of incidence [deg]
+// -s seed
 
 // root -l psi/r4s/resvsgeo.C
 
@@ -127,6 +128,8 @@ int main( int argc, char* argv[] )
 
     double angle = 999; // flag
 
+    uint64_t seed = 0;
+
     for( int i = 1; i < argc; ++i ) {
 
         if( !strcmp( argv[i], "-n" ) )
@@ -150,6 +153,8 @@ int main( int argc, char* argv[] )
         if( !strcmp( argv[i], "-a" ) )
         angle = atof( argv[++i] ); // [deg]
 
+        if( !strcmp( argv[i], "-s" ) )
+        seed = atoi( argv[++i] ); // random seed
     } // argc
 
     thr = thr*75*tmic; // [eh]
@@ -285,7 +290,12 @@ int main( int argc, char* argv[] )
 
     double thck = tmic * 1e-4; // [cm]
 
-    rgen.seed( time(NULL) ); // seconds since 1.1.1970
+    if(seed != 0) {
+        std::cout << "SEEDING with " << seed << std::endl;
+        rgen.seed(seed); // seconds since 1.1.1970
+    } else {
+        rgen.seed( time(NULL) ); // seconds since 1.1.1970
+    }
 
     // on cmspixel:
     //rgen.seed( 17 ); // long delta, Bragg-peak
