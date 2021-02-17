@@ -195,9 +195,8 @@ int main( int argc, char* argv[] )
 
     } // argc
 
-    double pi = 3.1415926536;
-    double wt = 180/pi;
-    double twopi = 2*pi;
+    double wt = 180/M_PI;
+    double twopi = 2*M_PI;
     double w2 = sqrt(2);
 
     double turn = atan( pitch / depth ); // [rad] default
@@ -225,7 +224,7 @@ int main( int argc, char* argv[] )
     double elm = 1e6 * elmm; // me [eV]
     double twome = 2*elm; // [eV]
     double Ry = 13.6056981;
-    double fac = 8.0 * pi * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
+    double fac = 8.0 * M_PI * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
     double log10 = log(10);
 
     std::cout << "  particle type     " << npm0 << std::endl;
@@ -694,7 +693,7 @@ int main( int argc, char* argv[] )
                         log( epbe*epbe + pow( betasq * ep[2][j], 2 ) );
 
                         double thet = atan( ep[2][j] * betasq / epbe );
-                        if( thet < 0 ) thet = thet + pi; // plausible-otherwise I"d have a jump
+                        if( thet < 0 ) thet = thet + M_PI; // plausible-otherwise I"d have a jump
                         // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
 
                         double sgh = 0.0092456 * E[j]*E[j] * thet *
@@ -778,7 +777,7 @@ int main( int argc, char* argv[] )
                         //gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / EkeV; // Mazziotta
                         gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
-                        double FF = 0.5*pi * E2*E2 * ZA*ZA / (Ek*Ek);
+                        double FF = 0.5* M_PI * E2*E2 * ZA*ZA / (Ek*Ek);
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
@@ -887,7 +886,7 @@ int main( int argc, char* argv[] )
                         std::cout << " NAN 1-cost " << 1-cost << ", 1-cost^2 " << 1-cost*cost << std::endl;
                         sint = 0;
                     }
-                    double phi = 2*pi*unirnd(rgen);
+                    double phi = 2*M_PI*unirnd(rgen);
 
                     // G4PenelopeIonisationModel.cc
 
@@ -1059,7 +1058,7 @@ int main( int argc, char* argv[] )
                         double pmom = sqrt( Ek * ( Ek + 2*ptm ) ); // [MeV/c] 2nd binomial
                         gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
-                        double FF = 0.5*pi * E2*E2 * ZA*ZA / (Ek*Ek);
+                        double FF = 0.5* M_PI * E2*E2 * ZA*ZA / (Ek*Ek);
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
@@ -1436,8 +1435,7 @@ double alph1( double x ) // x = 0..1
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double alph2( double x ) // x = 0..1
 {
-    static const double pi = 3.1415926536;
-    return 8/pi * sqrt( x*(1-x) );
+    return 8/M_PI * sqrt( x*(1-x) );
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
