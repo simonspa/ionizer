@@ -103,8 +103,19 @@ double Eshel[lsh], augmi[lsh][10], augde[lsh][10];
 int nvac[lsh];
 
 const unsigned lep = 14;
-double EPP[lep], PM[lep], PL23[lep], PL1[lep], PK[lep];
 const unsigned nep = lep-1;
+
+// EPP(I) = VALORI DI ENERGIA PER TABULARE LE PROBABILITA" DI
+// FOTOASSORBIMENTO NELLE VARIE SHELL
+// PM, PL23, PL1, PK = PROBABILITA" DI ASSORBIMENTO DA PARTE
+// DELLE SHELL M,L23,L1 E K
+
+// VALORI ESTRAPOLATI DA FRASER
+std::vector<double> EPP{0.0, 40.0, 50.0, 99.2, 99.2, 148.7, 148.7, 150.0, 300.0, 500.0, 1000.0, 1839.0, 1839.0, 2000.0};;
+std::vector<double> PM{0, 1.0, 1.0, 1.0, 0.03, 0.03, 0.02, 0.02, 0.02, 0.02, 0.03, 0.05, 0.0, 0.0};
+std::vector<double> PL23{0, 0.0, 0.0, 0.0, 0.97, 0.92, 0.88, 0.88, 0.83, 0.70, 0.55, 0.39, 0.0, 0.0};
+std::vector<double> PL1{0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.15, 0.28, 0.42, 0.56, 0.08, 0.08};
+std::vector<double> PK{0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.92, 0.92};
 
 std::ranlux24 rgen; // C++11 random number engine
 std::uniform_real_distribution <double> unirnd( 0, 1 );
@@ -278,7 +289,7 @@ int main( int argc, char* argv[] )
     // book histos
 
     TFile * histoFile = new
-    TFile( Form( "ionizer_p%i_w%i_d%i_t%i_c%i.hist",
+    TFile( Form( "ionizercpp_p%i_w%i_d%i_t%i_c%i.hist",
     int(pitch+0.5), int(width+0.5), int(depth+0.5),
     int(thr), int(100*cx+0.1) ),
     "RECREATE" );
@@ -543,90 +554,6 @@ int main( int argc, char* argv[] )
     augde[2][1] = 99.2;
     augde[2][2] =  0.0;
 
-    // EPP(I) = VALORI DI ENERGIA PER TABULARE LE PROBABILITA" DI
-    // FOTOASSORBIMENTO NELLE VARIE SHELL
-    // PM, PL23, PL1, PK = PROBABILITA" DI ASSORBIMENTO DA PARTE
-    // DELLE SHELL M,L23,L1 E K
-
-    // VALORI ESTRAPOLATI DA FRASER
-
-    EPP[1]  = 40.0;
-    PM[1]   = 1.0;
-    PL23[1] = 0.0;
-    PL1[1]  = 0.0;
-    PK[1]   = 0.0;
-
-    EPP[2]  = 50.0;
-    PM[2]   = 1.0;
-    PL23[2] = 0.0;
-    PL1[2]  = 0.0;
-    PK[2]   = 0.0;
-
-    EPP[3]  = 99.2;
-    PM[3]   = 1.0;
-    PL23[3] = 0.0;
-    PL1[3]  = 0.0;
-    PK[3]   = 0.0;
-
-    EPP[4]  = 99.2;
-    PM[4]   = 0.03;
-    PL23[4] = 0.97;
-    PL1[4]  = 0.0;
-    PK[4]   = 0.0;
-
-    EPP[5]  = 148.7;
-    PM[5]   = 0.03;
-    PL23[5] = 0.92;
-    PL1[5]  = 0.0;
-    PK[5]   = 0.0;
-
-    EPP[6]  = 148.7;
-    PM[6]   = 0.02;
-    PL23[6] = 0.88;
-    PL1[6]  = 0.1;
-    PK[6]   = 0.0;
-
-    EPP[7]  = 150.0;
-    PM[7]   = 0.02;
-    PL23[7] = 0.88;
-    PL1[7]  = 0.1;
-    PK[7]   = 0.0;
-
-    EPP[8]  = 300.0;
-    PM[8]   = 0.02;
-    PL23[8] = 0.83;
-    PL1[8]  = 0.15;
-    PK[8]   = 0.0;
-
-    EPP[9]  = 500.0;
-    PM[9]   = 0.02;
-    PL23[9] = 0.70;
-    PL1[9]  = 0.28;
-    PK[9]   = 0.0;
-
-    EPP[10]  = 1000.0;
-    PM[10]   = 0.03;
-    PL23[10] = 0.55;
-    PL1[10]  = 0.42;
-    PK[10]   = 0.0;
-
-    EPP[11]  = 1839.0;
-    PM[11]   = 0.05;
-    PL23[11] = 0.39;
-    PL1[11]  = 0.56;
-    PK[11]   = 0.0;
-
-    EPP[12]  = 1839.0;
-    PM[12]   = 0.0;
-    PL23[12] = 0.0;
-    PL1[12]  = 0.08;
-    PK[12]   = 0.92;
-
-    EPP[13]  = 2000.0;
-    PM[13]   = 0.0;
-    PL23[13] = 0.0;
-    PL1[13]  = 0.08;
-    PK[13]   = 0.92;
 
     // EGAP = GAP ENERGY IN eV
     // EMIN = THRESHOLD ENERGY (ALIG ET AL., PRB22 (1980), 5565)
