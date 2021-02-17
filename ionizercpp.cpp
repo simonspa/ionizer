@@ -46,9 +46,9 @@
 // ionizer3.root
 
 #include <cstdlib> // atoi
-#include <iostream> // cout
+#include <iostream> // std::cout
 #include <fstream> // files
-#include <sstream> // stringstream
+#include <sstream> // std::stringstream
 #include <cmath> // log
 #include <random>
 #include <ctime>
@@ -58,8 +58,6 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile.h>
-
-using namespace std;
 
 struct delta {
     double E; // [MeV]
@@ -88,9 +86,9 @@ double trian( double x );
 double gena1();
 double gena2();
 double gentri();
-void shells( double Eg, stack <double> &veh );
-void TRL1MM( double Ev, stack <double> &veh );
-void TRL23MM( double Ev, stack <double> &veh );
+void shells( double Eg, std::stack <double> &veh );
+void TRL1MM( double Ev, std::stack <double> &veh );
+void TRL23MM( double Ev, std::stack <double> &veh );
 
 // global variables: (initialized in main, used in shells)
 
@@ -102,8 +100,8 @@ const unsigned lep = 14;
 double EPP[lep], PM[lep], PL23[lep], PL1[lep], PK[lep];
 const unsigned nep = lep-1;
 
-ranlux24 rgen; // C++11 random number engine
-uniform_real_distribution <double> unirnd( 0, 1 );
+std::ranlux24 rgen; // C++11 random number engine
+std::uniform_real_distribution <double> unirnd( 0, 1 );
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int main( int argc, char* argv[] )
@@ -178,14 +176,14 @@ int main( int argc, char* argv[] )
     double fac = 8.0 * pi * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
     double log10 = log(10);
 
-    cout << "  particle type    " << npm0 << endl;
-    cout << "  kinetic energy   " << Ekin0 << " MeV" << endl;
-    cout << "  number of events " << nev << endl;
-    cout << "  thickness        " << tmic << " um" << endl;
-    cout << "  pixel pitch      " << pitch << " um" << endl;
-    cout << "  incident angle   " << turn*wt << " deg" << endl;
-    cout << "  track path       " << width << " um" << endl;
-    cout << "  temperature      " << temp << " K" << endl;
+    std::cout << "  particle type    " << npm0 << std::endl;
+    std::cout << "  kinetic energy   " << Ekin0 << " MeV" << std::endl;
+    std::cout << "  number of events " << nev << std::endl;
+    std::cout << "  thickness        " << tmic << " um" << std::endl;
+    std::cout << "  pixel pitch      " << pitch << " um" << std::endl;
+    std::cout << "  incident angle   " << turn*wt << " deg" << std::endl;
+    std::cout << "  track path       " << width << " um" << std::endl;
+    std::cout << "  temperature      " << temp << " K" << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // book histos
@@ -238,17 +236,17 @@ int main( int argc, char* argv[] )
     TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*tmic*5, 0, 4*tmic*5 );
 
     TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV",
-    max(100,int(3*5*0.35*tmic)), 0, int(3*5*0.35*tmic) );
+    std::max(100,int(3*5*0.35*tmic)), 0, int(3*5*0.35*tmic) );
 
     TH1I hteh( "teh", "total e-h;total charge [ke];tracks",
-    max(100,int(50*0.1*tmic)), 0, max(1,int(3*10*0.1*tmic)) );
+    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(3*10*0.1*tmic)) );
 
     TH1I hq0( "q0", "row 0 normal charge;normal charge [ke];row 0",
-    max(100,int(50*0.1*tmic)), 0, max(1,int(10*0.1*tmic)) );
+    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(10*0.1*tmic)) );
     TH1I hq1( "q1", "row 1 normal charge;normal charge [ke];row 1",
-    max(100,int(50*0.1*tmic)), 0, max(1,int(10*0.1*tmic)) );
+    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(10*0.1*tmic)) );
     TH1I hq2( "q2", "row 2 normal charge;normal charge [ke];row 2",
-    max(100,int(50*0.1*tmic)), 0, max(1,int(10*0.1*tmic)) );
+    std::max(100,int(50*0.1*tmic)), 0, std::max(1,int(10*0.1*tmic)) );
 
     TH1I hdxt( "dxt", "dxt;dxt [#mum];tracks", 200, -width, width );
     TH1I hdx3( "dx3", "dx3;dx3 [#mum];tracks", 200, -width, width );
@@ -312,8 +310,8 @@ int main( int argc, char* argv[] )
         dE[j]  = E[j+1] - E[j];
     }
 
-    cout << "n2 " << n2 << ", Emin " << Emin << ", um " << um
-    << ", E[nume] " << E[nume] << endl;
+    std::cout << "n2 " << n2 << ", Emin " << Emin << ", um " << um
+    << ", E[nume] " << E[nume] << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ DIELECTRIC CONSTANTS
@@ -321,27 +319,27 @@ int main( int argc, char* argv[] )
     double ep[3][lime];
     double dfdE[lime];
 
-    ifstream f14( "HEPS.TAB" );
+    std::ifstream f14( "HEPS.TAB" );
 
     if( f14.bad() || ! f14.is_open() ) {
-        cout << "Error opening HEPS.TAB" << endl;
+        std::cout << "Error opening HEPS.TAB" << std::endl;
         return 1;
     }
     else {
 
-        string line;
+        std::string line;
         getline( f14, line );
 
-        istringstream tokenizer( line );
+        std::istringstream tokenizer( line );
 
         int n2t;
         unsigned numt;
         tokenizer >> n2t;
         tokenizer >> numt;
 
-        cout << " HEPS.TAB: n2t " << n2t << ", numt " << numt << endl;
-        if( n2 != n2t ) cout << " CAUTION: n2 & n2t differ" << endl;
-        if( nume != numt ) cout << " CAUTION: nume & numt differ" << endl;
+        std::cout << " HEPS.TAB: n2t " << n2t << ", numt " << numt << std::endl;
+        if( n2 != n2t ) std::cout << " CAUTION: n2 & n2t differ" << std::endl;
+        if( nume != numt ) std::cout << " CAUTION: nume & numt differ" << std::endl;
         if( numt > nume ) numt = nume;
 
         // HEPS.TAB is the table of the dielectric constant for solid Si,
@@ -355,12 +353,12 @@ int main( int argc, char* argv[] )
 
             getline( f14, line );
 
-            istringstream tokenizer( line );
+            std::istringstream tokenizer( line );
 
             double etbl, ep1, ep2, rimt;
             tokenizer >> jt >> etbl >> ep1 >> ep2 >> rimt;
 
-            //cout << jt << "  " << etbl << "  " << ep1 << "  " << ep2 << "  " << rimt << endl;
+            //cout << jt << "  " << etbl << "  " << ep1 << "  " << ep2 << "  " << rimt << std::endl;
 
             ep[1][jt] = ep1;
             ep[2][jt] = ep2;
@@ -372,7 +370,7 @@ int main( int argc, char* argv[] )
 
         }
 
-        cout << "read " << jt << " data lines from HEPS.TAB" << endl;
+        std::cout << "read " << jt << " data lines from HEPS.TAB" << std::endl;
 
         // MAZZIOTTA: 0.0 at 864
         // EP( 2, 864 ) = 0.5 * ( EP(2, 863) + EP(2, 865) )
@@ -387,27 +385,27 @@ int main( int argc, char* argv[] )
 
     double sig[7][lime];
 
-    ifstream f15( "MACOM.TAB" );
+    std::ifstream f15( "MACOM.TAB" );
 
     if( f15.bad() || ! f15.is_open() ) {
-        cout << "Error opening MACOM.TAB" << endl;
+        std::cout << "Error opening MACOM.TAB" << std::endl;
         return 1;
     }
     else {
 
-        string line;
+        std::string line;
         getline( f15, line );
 
-        istringstream tokenizer( line );
+        std::istringstream tokenizer( line );
 
         int n2t;
         unsigned numt;
         tokenizer >> n2t;
         tokenizer >> numt;
 
-        cout << " MACOM.TAB: n2t " << n2t << ", numt " << numt << endl;
-        if( n2 != n2t ) cout << " CAUTION: n2 & n2t differ" << endl;
-        if( nume != numt ) cout << " CAUTION: nume & numt differ" << endl;
+        std::cout << " MACOM.TAB: n2t " << n2t << ", numt " << numt << std::endl;
+        if( n2 != n2t ) std::cout << " CAUTION: n2 & n2t differ" << std::endl;
+        if( nume != numt ) std::cout << " CAUTION: nume & numt differ" << std::endl;
         if( numt > nume ) numt = nume;
 
         // MACOM.TAB is the table of the integrals over momentum transfer K of the
@@ -420,18 +418,18 @@ int main( int argc, char* argv[] )
 
             getline( f15, line );
 
-            istringstream tokenizer( line );
+            std::istringstream tokenizer( line );
 
             double etbl, sigt;
             tokenizer >> jt >> etbl >> sigt;
 
-            //cout << jt << "  " << etbl << "  " << sigt << endl;
+            //cout << jt << "  " << etbl << "  " << sigt << std::endl;
 
             sig[6][jt] = sigt;
 
         }
 
-        cout << "read " << jt << " data lines from MACOM.TAB" << endl;
+        std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
 
     } // MACOM.TAB
 
@@ -439,21 +437,21 @@ int main( int argc, char* argv[] )
 
     double xkmn[200];
 
-    ifstream f16( "EMERC.TAB" );
+    std::ifstream f16( "EMERC.TAB" );
 
     if( f16.bad() || ! f16.is_open() ) {
-        cout << "Error opening EMERC.TAB" << endl;
+        std::cout << "Error opening EMERC.TAB" << std::endl;
         return 1;
     }
     else {
 
-        string line;
+        std::string line;
         getline( f16, line ); // header lines
         getline( f16, line );
         getline( f16, line );
         getline( f16, line );
 
-        istringstream tokenizer( line );
+        std::istringstream tokenizer( line );
 
         // EMERC.TAB is the table of the integral over K of generalized oscillator
         // strength for E < 11.9 eV with Im(-1/epsilon) from equations in the Appendix
@@ -465,19 +463,19 @@ int main( int argc, char* argv[] )
 
             getline( f16, line );
 
-            istringstream tokenizer( line );
+            std::istringstream tokenizer( line );
 
             double etbl, sigt, xk;
             tokenizer >> jt >> etbl >> sigt >> xk;
 
-            //cout << jt << "  " << etbl << "  " << sigt << "  " << xk << endl;
+            //cout << jt << "  " << etbl << "  " << sigt << "  " << xk << std::endl;
 
             sig[6][jt] = sigt; // overwritten!
             xkmn[jt] = xk;
 
         }
 
-        cout << "read " << jt << " data lines from MACOM.TAB" << endl;
+        std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
 
     } // EMERC.TAB
 
@@ -639,18 +637,18 @@ int main( int argc, char* argv[] )
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-    cout << "-----------------------------------------------------------------\n";
-    cout << "STRAG: " << Ekin0 << " MeV of " << npm0 << " in " << thck*1e4 << " um Si for "
+    std::cout << "-----------------------------------------------------------------\n";
+    std::cout << "STRAG: " << Ekin0 << " MeV of " << npm0 << " in " << thck*1e4 << " um Si for "
     << nev << " events\n";
-    cout << "-----------------------------------------------------------------\n";
+    std::cout << "-----------------------------------------------------------------\n";
 
     // EVENT LOOP:
 
     for( unsigned iev = 0; iev < nev; ++ iev ) {
 
-        stack <delta> deltas;
+        std::stack <delta> deltas;
 
-        // put track on stack
+        // put track on std::stack
 
         double xmid = width * ( unirnd(rgen) - 0.5 ); // [um] -w/2..w/2 track mid
 
@@ -670,7 +668,7 @@ int main( int argc, char* argv[] )
         unsigned nloss = 0; // ionization
         double tde = 0.0;
         unsigned meh = 0;
-        vector <cluster> clusters;
+        std::vector <cluster> clusters;
         double Ekprev = 9e9; // update flag
 
         while( ! deltas.empty() ) {
@@ -696,7 +694,7 @@ int main( int argc, char* argv[] )
             double zmax = zz;
             double ptm = elmm; // e 0.51100 MeV
 
-            cout << "    delta " << Ek*1e3 << " keV"
+            std::cout << "    delta " << Ek*1e3 << " keV"
             << ", cost " << t.w
             << ", u " << t.u
             << ", v " << t.v
@@ -720,7 +718,7 @@ int main( int argc, char* argv[] )
                     double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam ); // bug fixed
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
                     if( npm == 4 ) Emax = 0.5*Ek;
-                    // maximum energy loss for incident electrons
+                    // std::maximum energy loss for incident electrons
                     Emax = 1e6 * Emax; // eV
 
                     // Define parameters and calculate Inokuti"s sums,
@@ -847,7 +845,7 @@ int main( int argc, char* argv[] )
                     else { //  OTHER PARTICLES
 
                         double getot = Ek + ptm;
-                        xlel = min( 2232.0 * radl * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radl );
+                        xlel = std::min( 2232.0 * radl * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radl );
                         // units ?
                     }
 
@@ -857,14 +855,14 @@ int main( int argc, char* argv[] )
                     Ekprev = Ek;
 
                     if( ldb )
-                    cout << "  ev " << iev << " type " << npm << ", Ekin " << Ek*1e3 << " keV"
-                    << ", beta " << sqrt(betasq) << ", gam " << gam << endl
+                    std::cout << "  ev " << iev << " type " << npm << ", Ekin " << Ek*1e3 << " keV"
+                    << ", beta " << sqrt(betasq) << ", gam " << gam << std::endl
                     << "  Emax " << Emax << ", nlast " << nlast << ", Elast " << E[nlast]
-                    << ", norm " << totsig[nlast] << endl
+                    << ", norm " << totsig[nlast] << std::endl
                     << "  inelastic " << 1e4/xm0 << "  " << 1e4/sst
                     << ", elastic " << 1e4/xlel << " um"
                     << ", mean dE " << stpw*thck*1e-3 << " keV"
-                    << endl << flush;
+                    << std::endl << std::flush;
 
                 } // update
 
@@ -881,7 +879,7 @@ int main( int argc, char* argv[] )
                 zz += xr*vect[2];
 
                 if( ldb && Ek < 1 )
-                cout << "step " << xr*1e4 << ", z " << zz*1e4 << endl;
+                std::cout << "step " << xr*1e4 << ", z " << zz*1e4 << std::endl;
 
                 hzz.Fill( zz*1e4 );
 
@@ -918,10 +916,10 @@ int main( int argc, char* argv[] )
 
                     if( resekin < explicit_delta_energy_cut_keV*1e-3 ) {
 
-                        // cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << Eg*1e-3 << resekin*1e-3
+                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << Eg*1e-3 << resekin*1e-3
                         Eg = Ek*1E6; // [eV]
                         resekin = Ek - Eg; // zero
-                        // cout << "LAST ENERGY LOSS" << Eg << resekin
+                        // std::cout << "LAST ENERGY LOSS" << Eg << resekin
 
                     }
 
@@ -963,7 +961,7 @@ int main( int argc, char* argv[] )
                     // emission angle of the delta ray:
                     // CDTS = SQRT( DE * RB / ( E * ( DE + TME ) ) ) // like Geant
 
-                    vector <double> din(3);
+                    std::vector <double> din(3);
                     din[0] = sint*cos(phi);
                     din[1] = sint*sin(phi);
                     din[2] = cost;
@@ -983,7 +981,7 @@ int main( int argc, char* argv[] )
 
                     // GENERATE PRIMARY e-h:
 
-                    stack <double> veh;
+                    std::stack <double> veh;
 
                     if( Eg > Ethr )
                     shells( Eg, veh );
@@ -995,13 +993,13 @@ int main( int argc, char* argv[] )
                     while( ! veh.empty() ) {
 
                         double Eeh = veh.top();
-                        //cout << "    eh "<< veh.size() << ", Eeh " << Eeh << ", neh " << neh << endl;
+                        //cout << "    eh "<< veh.size() << ", Eeh " << Eeh << ", neh " << neh << std::endl;
 
                         veh.pop();
 
                         if( Eeh > explicit_delta_energy_cut_keV*1e3 ) {
 
-                            // put delta on stack:
+                            // put delta on std::stack:
 
                             delta t;
                             t.E = Eeh*1E-6; // Ekin [MeV]
@@ -1034,7 +1032,7 @@ int main( int argc, char* argv[] )
                                 double E1 = gena1() * (Eeh-Ethr);
                                 double E2 = gena2() * (Eeh-Ethr-E1);
 
-                                //cout << "      ion " << Eeh << " => " << E1 << " + " << E2 << endl;
+                                //cout << "      ion " << Eeh << " => " << E1 << " + " << E2 << std::endl;
 
                                 if( E1 > Ethr )
                                 veh.push( E1 );
@@ -1045,7 +1043,7 @@ int main( int argc, char* argv[] )
                             }
                             else
                             Eeh = Eeh - eom0; // phonon emission
-                            // cout << "      fon " << ed
+                            // std::cout << "      fon " << ed
 
                         } // while Eeh
 
@@ -1055,7 +1053,7 @@ int main( int argc, char* argv[] )
 
                     meh += neh;
 
-                    //cout << "  dE " << Eg << " eV, neh " << neh << endl;
+                    //cout << "  dE " << Eg << " eV, neh " << neh << std::endl;
 
                     // store charge cluster:
 
@@ -1085,7 +1083,7 @@ int main( int argc, char* argv[] )
 
                         // pixelav:
 
-                        poisson_distribution <int> poisson(Eg/3.645);
+                        std::poisson_distribution <int> poisson(Eg/3.645);
                         int keh = poisson(rgen);
                         hzeh.Fill( keh/Eg );
 
@@ -1094,14 +1092,14 @@ int main( int argc, char* argv[] )
                     Ek -= Eg*1E-6; // [MeV]
 
                     if( ldb && Ek < 1 )
-                    cout << "    Ek " << Ek*1e3
+                    std::cout << "    Ek " << Ek*1e3
                     << " keV, z " << zz*1e4 << ", neh " << neh
                     << ", steps " << it << ", ion " << nloss << ", elas " << nscat
                     << ", cl " << clusters.size()
-                    << endl;
+                    << std::endl;
 
                     if( Ek < 1E-6 || resekin < 1E-6 ) {
-                        // cout << "  absorbed" << endl;
+                        // std::cout << "  absorbed" << std::endl;
                         break;
                     }
 
@@ -1128,7 +1126,7 @@ int main( int argc, char* argv[] )
 
                     double phi = twopi*unirnd(rgen);
 
-                    vector <double> din(3);
+                    std::vector <double> din(3);
                     din[0] = sint*cos(phi);
                     din[1] = sint*sin(phi);
                     din[2] = cost;
@@ -1150,7 +1148,7 @@ int main( int argc, char* argv[] )
 
             } // inside steps
 
-            cout << ", zmax " << zmax*1e4 << " um" << endl;
+            std::cout << ", zmax " << zmax*1e4 << " um" << std::endl;
 
             Ekprev = 9e9; // update flag for next delta
 
@@ -1166,12 +1164,12 @@ int main( int argc, char* argv[] )
         enddo
         */
 
-        cout << "ev " << iev
+        std::cout << "ev " << iev
         << ": steps " << it << ", ion " << nloss << ", elas " << nscat
         << ", dE " << tde*1e-3 << " keV"
         << ", eh " << meh
         << ", cl " << clusters.size()
-        << endl;
+        << std::endl;
 
         hncl.Fill( clusters.size() );
         htde.Fill( tde*1e-3 ); // [keV] energy conservation - binding energy
@@ -1228,20 +1226,20 @@ int main( int argc, char* argv[] )
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    cout << "done: events " << nev << endl;
+    std::cout << "done: events " << nev << std::endl;
     histoFile->Write();
     histoFile->ls();
     histoFile->Close();
-    cout << endl
-    << histoFile->GetName() << endl;
-    cout << endl;
+    std::cout << std::endl
+    << histoFile->GetName() << std::endl;
+    std::cout << std::endl;
 
 } // main
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double alph1( double x ) // x = 0..1
 {
-    return 105./16. * (1.-x)*(1-x) * sqrt(x); // integral = 1, max = 1.8782971
+    return 105./16. * (1.-x)*(1-x) * sqrt(x); // integral = 1, std::max = 1.8782971
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1295,7 +1293,7 @@ double gentri() // -1..1
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void shells( double Eg, stack <double> &veh )
+void shells( double Eg, std::stack <double> &veh )
 {
     // INPUT:
     // EG = VIRTUAL GAMMA ENERGY [eV]
@@ -1351,7 +1349,7 @@ void shells( double Eg, stack <double> &veh )
         if( is > 4 ) is = 4;
     }
 
-    //cout << "  shells for " << Eg << " eV, Ev " << Ev << ", is " << is << endl;
+    //cout << "  shells for " << Eg << " eV, Ev " << Ev << ", is " << is << std::endl;
 
     // PROCESSES:
 
@@ -1378,8 +1376,8 @@ void shells( double Eg, stack <double> &veh )
     double Eth = Eshel[is];
     double Ephe = Eg - Eth;
     if( Ephe <= 0 ) {
-        cout << "shells: photoelectron with negative energy "
-        << Eg << ", shell " << is << " at " << Eth << " eV" << endl;
+        std::cout << "shells: photoelectron with negative energy "
+        << Eg << ", shell " << is << " at " << Eth << " eV" << std::endl;
         return;
     }
 
@@ -1600,7 +1598,7 @@ void shells( double Eg, stack <double> &veh )
 } // SHELLS
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void TRL1MM( double Ev, stack <double> &veh )
+void TRL1MM( double Ev, std::stack <double> &veh )
 {
     // TRANSITION L1 M M
 
@@ -1624,7 +1622,7 @@ void TRL1MM( double Ev, stack <double> &veh )
 } // TRL1MM
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void TRL23MM( double Ev, stack <double> &veh )
+void TRL23MM( double Ev, std::stack <double> &veh )
 {
     // TRANSITION L23 M M
 
