@@ -79,6 +79,9 @@ struct cluster {
 };
 
 // forward declarations:
+void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], double (&ep_2)[], double (&dfdE)[]);
+void read_macomtab(int n2, unsigned int nume, double (&sig)[]);
+void read_emerctab(double (&sig)[], double (&xkmn)[]);
 
 double alph1( double x );
 double alph2( double x );
@@ -319,165 +322,18 @@ int main( int argc, char* argv[] )
     double ep[3][lime];
     double dfdE[lime];
 
-    std::ifstream f14( "HEPS.TAB" );
-
-    if( f14.bad() || ! f14.is_open() ) {
-        std::cout << "Error opening HEPS.TAB" << std::endl;
-        return 1;
-    }
-    else {
-
-        std::string line;
-        getline( f14, line );
-
-        std::istringstream tokenizer( line );
-
-        int n2t;
-        unsigned numt;
-        tokenizer >> n2t;
-        tokenizer >> numt;
-
-        std::cout << " HEPS.TAB: n2t " << n2t << ", numt " << numt << std::endl;
-        if( n2 != n2t ) std::cout << " CAUTION: n2 & n2t differ" << std::endl;
-        if( nume != numt ) std::cout << " CAUTION: nume & numt differ" << std::endl;
-        if( numt > nume ) numt = nume;
-
-        // HEPS.TAB is the table of the dielectric constant for solid Si,
-        // epsilon = ep(1,j) + i*ep(2,j), as a function of energy loss E(j),
-        // section II.E in RMP, and rim is Im(-1/epsilon), Eq. (2.17), p.668.
-        // Print statements are included to check that the file is read correctly.
-
-        unsigned jt = 1;
-
-        while( ! f14.eof() && jt < numt ) {
-
-            getline( f14, line );
-
-            std::istringstream tokenizer( line );
-
-            double etbl, ep1, ep2, rimt;
-            tokenizer >> jt >> etbl >> ep1 >> ep2 >> rimt;
-
-            //cout << jt << "  " << etbl << "  " << ep1 << "  " << ep2 << "  " << rimt << std::endl;
-
-            ep[1][jt] = ep1;
-            ep[2][jt] = ep2;
-
-            // The dipole oscillator strength df/dE is calculated,
-            // essentially Eq. (2.20)
-
-            dfdE[jt] = rimt * 0.0092456 * E[jt];
-
-        }
-
-        std::cout << "read " << jt << " data lines from HEPS.TAB" << std::endl;
-
-        // MAZZIOTTA: 0.0 at 864
-        // EP( 2, 864 ) = 0.5 * ( EP(2, 863) + EP(2, 865) )
-        // RIM(864) = 0.5 * ( RIM(863) + RIM(865) )
-        // DFDE(864) = RIM(864) * 0.0092456 * E(864)
-        // DP: fixed in HEPS.TAB
-
-    } // HEPS.TAB
+    read_hepstab(n2, nume, E, ep[1], ep[2], dfdE);
 
     //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
 
     double sig[7][lime];
-
-    std::ifstream f15( "MACOM.TAB" );
-
-    if( f15.bad() || ! f15.is_open() ) {
-        std::cout << "Error opening MACOM.TAB" << std::endl;
-        return 1;
-    }
-    else {
-
-        std::string line;
-        getline( f15, line );
-
-        std::istringstream tokenizer( line );
-
-        int n2t;
-        unsigned numt;
-        tokenizer >> n2t;
-        tokenizer >> numt;
-
-        std::cout << " MACOM.TAB: n2t " << n2t << ", numt " << numt << std::endl;
-        if( n2 != n2t ) std::cout << " CAUTION: n2 & n2t differ" << std::endl;
-        if( nume != numt ) std::cout << " CAUTION: nume & numt differ" << std::endl;
-        if( numt > nume ) numt = nume;
-
-        // MACOM.TAB is the table of the integrals over momentum transfer K of the
-        // generalized oscillator strength, summed for all shells, i.e. the A(E)
-        // of Eq. (2.11), p. 667 of RMP
-
-        unsigned jt = 1;
-
-        while( ! f15.eof() && jt < numt ) {
-
-            getline( f15, line );
-
-            std::istringstream tokenizer( line );
-
-            double etbl, sigt;
-            tokenizer >> jt >> etbl >> sigt;
-
-            //cout << jt << "  " << etbl << "  " << sigt << std::endl;
-
-            sig[6][jt] = sigt;
-
-        }
-
-        std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
-
-    } // MACOM.TAB
+    read_macomtab(n2, nume, sig[6]);
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
     double xkmn[200];
-
-    std::ifstream f16( "EMERC.TAB" );
-
-    if( f16.bad() || ! f16.is_open() ) {
-        std::cout << "Error opening EMERC.TAB" << std::endl;
-        return 1;
-    }
-    else {
-
-        std::string line;
-        getline( f16, line ); // header lines
-        getline( f16, line );
-        getline( f16, line );
-        getline( f16, line );
-
-        std::istringstream tokenizer( line );
-
-        // EMERC.TAB is the table of the integral over K of generalized oscillator
-        // strength for E < 11.9 eV with Im(-1/epsilon) from equations in the Appendix
-        // of Emerson et al., Phys Rev B7, 1798 (1973) (also see CCS-63)
-
-        unsigned jt = 1;
-
-        while( ! f16.eof() && jt < 200 ) {
-
-            getline( f16, line );
-
-            std::istringstream tokenizer( line );
-
-            double etbl, sigt, xk;
-            tokenizer >> jt >> etbl >> sigt >> xk;
-
-            //cout << jt << "  " << etbl << "  " << sigt << "  " << xk << std::endl;
-
-            sig[6][jt] = sigt; // overwritten!
-            xkmn[jt] = xk;
-
-        }
-
-        std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
-
-    } // EMERC.TAB
+    read_emerctab(sig[6], xkmn);
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // SHELL INITIALIZATION
@@ -1235,6 +1091,164 @@ int main( int argc, char* argv[] )
     std::cout << std::endl;
 
 } // main
+
+void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], double (&ep_2)[], double (&dfdE)[]) {
+    std::ifstream f14( "HEPS.TAB" );
+
+    if( f14.bad() || ! f14.is_open() ) {
+        std::cout << "Error opening HEPS.TAB" << std::endl;
+        exit(1);
+    }
+    else {
+
+        std::string line;
+        getline( f14, line );
+
+        std::istringstream tokenizer( line );
+
+        int n2t;
+        unsigned numt;
+        tokenizer >> n2t;
+        tokenizer >> numt;
+
+        std::cout << " HEPS.TAB: n2t " << n2t << ", numt " << numt << std::endl;
+        if( n2 != n2t ) std::cout << " CAUTION: n2 & n2t differ" << std::endl;
+        if( nume != numt ) std::cout << " CAUTION: nume & numt differ" << std::endl;
+        if( numt > nume ) numt = nume;
+
+        // HEPS.TAB is the table of the dielectric constant for solid Si,
+        // epsilon = ep(1,j) + i*ep(2,j), as a function of energy loss E(j),
+        // section II.E in RMP, and rim is Im(-1/epsilon), Eq. (2.17), p.668.
+        // Print statements are included to check that the file is read correctly.
+
+        unsigned jt = 1;
+
+        while( ! f14.eof() && jt < numt ) {
+
+            getline( f14, line );
+
+            std::istringstream tokenizer( line );
+
+            double etbl, ep1, ep2, rimt;
+            tokenizer >> jt >> etbl >> ep1 >> ep2 >> rimt;
+
+            //cout << jt << "  " << etbl << "  " << ep1 << "  " << ep2 << "  " << rimt << std::endl;
+
+            ep_1[jt] = ep1;
+            ep_2[jt] = ep2;
+
+            // The dipole oscillator strength df/dE is calculated,
+            // essentially Eq. (2.20)
+
+            dfdE[jt] = rimt * 0.0092456 * E[jt];
+
+        }
+
+        std::cout << "read " << jt << " data lines from HEPS.TAB" << std::endl;
+
+        // MAZZIOTTA: 0.0 at 864
+        // EP( 2, 864 ) = 0.5 * ( EP(2, 863) + EP(2, 865) )
+        // RIM(864) = 0.5 * ( RIM(863) + RIM(865) )
+        // DFDE(864) = RIM(864) * 0.0092456 * E(864)
+        // DP: fixed in HEPS.TAB
+
+    } // HEPS.TAB
+}
+
+void read_macomtab(int n2, unsigned int nume, double (&sig)[]) {
+
+    std::ifstream f15( "MACOM.TAB" );
+
+    if( f15.bad() || ! f15.is_open() ) {
+        std::cout << "Error opening MACOM.TAB" << std::endl;
+        exit(1);
+    }
+    else {
+
+        std::string line;
+        getline( f15, line );
+
+        std::istringstream tokenizer( line );
+
+        int n2t;
+        unsigned numt;
+        tokenizer >> n2t;
+        tokenizer >> numt;
+
+        std::cout << " MACOM.TAB: n2t " << n2t << ", numt " << numt << std::endl;
+        if( n2 != n2t ) std::cout << " CAUTION: n2 & n2t differ" << std::endl;
+        if( nume != numt ) std::cout << " CAUTION: nume & numt differ" << std::endl;
+        if( numt > nume ) numt = nume;
+
+        // MACOM.TAB is the table of the integrals over momentum transfer K of the
+        // generalized oscillator strength, summed for all shells, i.e. the A(E)
+        // of Eq. (2.11), p. 667 of RMP
+
+        unsigned jt = 1;
+
+        while( ! f15.eof() && jt < numt ) {
+
+            getline( f15, line );
+
+            std::istringstream tokenizer( line );
+
+            double etbl, sigt;
+            tokenizer >> jt >> etbl >> sigt;
+
+            //cout << jt << "  " << etbl << "  " << sigt << std::endl;
+
+            sig[jt] = sigt;
+
+        }
+
+        std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
+
+    } // MACOM.TAB
+}
+
+void read_emerctab(double (&sig)[], double (&xkmn)[]) {
+    std::ifstream f16( "EMERC.TAB" );
+
+    if( f16.bad() || ! f16.is_open() ) {
+        std::cout << "Error opening EMERC.TAB" << std::endl;
+        exit(1);
+    }
+    else {
+
+        std::string line;
+        getline( f16, line ); // header lines
+        getline( f16, line );
+        getline( f16, line );
+        getline( f16, line );
+
+        std::istringstream tokenizer( line );
+
+        // EMERC.TAB is the table of the integral over K of generalized oscillator
+        // strength for E < 11.9 eV with Im(-1/epsilon) from equations in the Appendix
+        // of Emerson et al., Phys Rev B7, 1798 (1973) (also see CCS-63)
+
+        unsigned jt = 1;
+
+        while( ! f16.eof() && jt < 200 ) {
+
+            getline( f16, line );
+
+            std::istringstream tokenizer( line );
+
+            double etbl, sigt, xk;
+            tokenizer >> jt >> etbl >> sigt >> xk;
+
+            //cout << jt << "  " << etbl << "  " << sigt << "  " << xk << std::endl;
+
+            sig[jt] = sigt; // overwritten!
+            xkmn[jt] = xk;
+
+        }
+
+        std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
+
+    } // EMERC.TAB
+}
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double alph1( double x ) // x = 0..1
