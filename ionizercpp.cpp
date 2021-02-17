@@ -217,11 +217,10 @@ int main( int argc, char* argv[] )
 
     double temp = 298; // [K]
 
-    double elmm = 0.51099906; // e mass [MeV]
-    double elm = 1e6 * elmm; // me [eV]
-    double twome = 2*elm; // [eV]
-    double Ry = 13.6056981;
-    double fac = 8.0 * M_PI * Ry*Ry * pow( 0.529177e-8, 2 ) / elm;
+    double electron_mass_mev = 0.51099906; // e mass [MeV]
+    double electron_mass_ev = 1e6 * electron_mass_mev; // me [eV]
+    double rydberg_constant = 13.6056981;
+    double fac = 8.0 * M_PI * rydberg_constant*rydberg_constant * pow( 0.529177e-8, 2 ) / electron_mass_ev;
     double log10 = log(10);
 
     std::cout << "  particle type     " << npm0 << std::endl;
@@ -428,12 +427,12 @@ int main( int argc, char* argv[] )
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // silicon:
 
-    double ZA = 14.0; // ZA = atomic number of absorber, Si
-    double AW = 28.086; // AW = atomic weight of absorber
-    double rho = 2.329; // rho= density of absorber material
-    double radl = 9.36; // [cm]
+    double atomic_number = 14.0; // ZA = atomic number of absorber, Si
+    double atomic_weight = 28.086; // AW = atomic weight of absorber
+    double density = 2.329; // rho= density of absorber material
+    double radiation_length = 9.36; // [cm]
 
-    double atnu = 6.0221367e23 * rho / AW; // atnu = # of atoms per cm**3
+    double atnu = 6.0221367e23 * density / atomic_weight; // atnu = # of atoms per cm**3
 
     if(seed != 0) {
         std::cout << "SEEDING with " << seed << std::endl;
@@ -616,7 +615,7 @@ int main( int argc, char* argv[] )
             double xlel = 1;
             double gn = 1;
             double totsig[lime];
-            double ptm = elmm; // e 0.51100 MeV
+            double ptm = electron_mass_mev; // e 0.51100 MeV
 
             std::cout << "  delta " << Ek*1e3 << " keV"
             << ", cost " << t.w
@@ -629,7 +628,7 @@ int main( int argc, char* argv[] )
                 if( Ek < 0.9 * Ekprev ) { // update
 
                     double zi = 1.0;
-                    ptm = elmm; // e 0.51100 MeV
+                    ptm = electron_mass_mev; // e 0.51100 MeV
                     if(      npm == 1 ) ptm = 938.2723; // proton
                     else if( npm == 2 ) ptm = 139.578; // pion
                     else if( npm == 3 ) ptm = 493.67; // K
@@ -639,7 +638,7 @@ int main( int argc, char* argv[] )
                     double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma = p/m
                     double pmom = ptm*bg; // [MeV/c]
                     double betasq = bg*bg / ( 1 + bg*bg );
-                    double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/elmm + 0.5*elmm/ptm + gam );
+                    double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/electron_mass_mev + 0.5*electron_mass_mev/ptm + gam );
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
                     if( npm == 4 ) Emax = 0.5*Ek;
                     // std::maximum energy loss for incident electrons
@@ -651,7 +650,7 @@ int main( int argc, char* argv[] )
                     double dec = zi*zi * atnu * fac / betasq;
                     double bemx = betasq / Emax;
                     double EkeV = Ek * 1e6; // [eV]
-                    double twombb = 2 * elm * betasq; // [eV]
+                    double twombb = 2 * electron_mass_ev * betasq; // [eV]
 
                     // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
                     // sig(*,j) actually is E**2 * sigma(E)
@@ -668,12 +667,12 @@ int main( int argc, char* argv[] )
 
                         if( E[j] > Emax ) break;
 
-                        double Q1 = Ry;
+                        double Q1 = rydberg_constant;
 
                         // Eq. (3.1) in RMP and red notebook CCS-33, 39 & 47
 
-                        if( E[j] < 100.0 ) Q1 = pow( 0.025, 2 ) * Ry;
-                        if( E[j] <  11.9 ) Q1 = pow( xkmn[j], 2 ) * Ry;
+                        if( E[j] < 100.0 ) Q1 = pow( 0.025, 2 ) * rydberg_constant;
+                        if( E[j] <  11.9 ) Q1 = pow( xkmn[j], 2 ) * rydberg_constant;
 
                         double qmin = E[j]*E[j] / twombb; // twombb = 2 m beta**2 [eV]
 
@@ -771,19 +770,19 @@ int main( int argc, char* argv[] )
 
                     if( npm == 4 ) { // ELECTRONS
 
-                        //gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / EkeV; // Mazziotta
-                        gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
+                        //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / EkeV; // Mazziotta
+                        gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
-                        double FF = 0.5* M_PI * E2*E2 * ZA*ZA / (Ek*Ek);
+                        double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (Ek*Ek);
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
-                        xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
+                        xlel = atnu*S0EL; // ATNU = N_A * density / A = atoms/cm3
 
                     }
                     else { //  OTHER PARTICLES
 
                         double getot = Ek + ptm;
-                        xlel = std::min( 2232.0 * radl * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radl );
+                        xlel = std::min( 2232.0 * radiation_length * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radiation_length );
                         // units ?
                     }
 
@@ -873,8 +872,8 @@ int main( int argc, char* argv[] )
                     // SINT = COST ! flip
                     // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / Ek ) ! wrong
 
-                    //double cost = sqrt( Eg / (twome + Eg) ); // M. Swartz
-                    double cost = sqrt( Eg / (twome + Eg) * ( Ek + twome*1e-6 ) / Ek );
+                    //double cost = sqrt( Eg / (2*electron_mass_ev + Eg) ); // M. Swartz
+                    double cost = sqrt( Eg / (2*electron_mass_ev + Eg) * ( Ek + 2*electron_mass_ev*1e-6 ) / Ek );
                     // Penelope, Geant4
                     double sint;
                     if( cost*cost <= 1 )
@@ -1051,14 +1050,14 @@ int main( int argc, char* argv[] )
 
                     if( npm == 4 ) { // electrons, update elastic cross section at new Ek
 
-                        //gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (Ek*1E6); // Mazziotta
+                        //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (Ek*1E6); // Mazziotta
                         double pmom = sqrt( Ek * ( Ek + 2*ptm ) ); // [MeV/c] 2nd binomial
-                        gn = 2*2.61 * pow( ZA, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
+                        gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
-                        double FF = 0.5* M_PI * E2*E2 * ZA*ZA / (Ek*Ek);
+                        double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (Ek*Ek);
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
-                        xlel = atnu*S0EL; // ATNU = N_A * rho / A = atoms/cm3
+                        xlel = atnu*S0EL; // ATNU = N_A * density / A = atoms/cm3
 
                     }
 
