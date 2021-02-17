@@ -86,9 +86,6 @@ void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], doubl
 void read_macomtab(int n2, unsigned int nume, double (&sig)[]);
 void read_emerctab(double (&sig)[], double (&xkmn)[]);
 
-double alph1( double x );
-double alph2( double x );
-double trian( double x );
 double gena1();
 double gena2();
 double gentri();
@@ -1424,37 +1421,18 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]) {
         sig[jt] = sigt; // overwritten!
         xkmn[jt] = xk;
     }
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-double alph1( double x ) // x = 0..1
-{
-    return 105./16. * (1.-x)*(1-x) * sqrt(x); // integral = 1, max = 1.8782971
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-double alph2( double x ) // x = 0..1
-{
-    return 8/M_PI * sqrt( x*(1-x) );
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-double trian( double x ) // x = -1..1
-{
-    if( x < 0 )
-    return x + 1;
-    else
-    return -x + 1;
+    std::cout << "  read " << jt << " data lines from EMERC.TAB" << std::endl;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gena1()
 {
-    double r1 = 0, r2 = 0;
+    double r1 = 0, r2 = 0, alph1 = 0;
     do {
         r1 = unirnd(rgen);
         r2 = unirnd(rgen);
-    } while(alph1(r1) > 1.8783*r2); // rejection method
+        alph1 = 105./16. * (1.-r1)*(1-r1) * sqrt(r1); // integral = 1, max = 1.8782971
+    } while(alph1 > 1.8783*r2); // rejection method
 
     return r1;
 }
@@ -1462,11 +1440,12 @@ double gena1()
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gena2()
 {
-    double r1 = 0, r2 = 0;
+    double r1 = 0, r2 = 0, alph2 = 0;
     do {
         r1 = unirnd(rgen);
         r2 = unirnd(rgen);
-    } while(alph2(r1) > 1.27324*r2); // rejection method
+        alph2 = 8/M_PI * sqrt( r1*(1-r1) );
+    } while(alph2 > 1.27324*r2); // rejection method
 
     return r1;
 }
@@ -1474,11 +1453,12 @@ double gena2()
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gentri() // -1..1
 {
-    double x = 0, r2 = 0;
+    double x = 0, r2 = 0, trian = 0;
     do {
         x = -1 + 2*unirnd(rgen);
         r2 = unirnd(rgen);
-    } while(trian(x) > r2); // rejection method
+        trian = x < 0 ? x + 1 : -x + 1;
+    } while(trian > r2); // rejection method
 
     return x;
 }
