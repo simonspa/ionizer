@@ -10,6 +10,10 @@ ionizer: ionizer.cc Makefile
 	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o ionizer  ionizer.cc $(ROOTLIBS)
 	@echo 'done: ionizer'
 
+ionizercpp: ionizercpp.cpp Makefile
+	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o ionizercpp  ionizercpp.cpp $(ROOTLIBS)
+	@echo 'done: ionizercpp'
+
 mfp: mfp.cc Makefile
 	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o mfp  mfp.cc $(ROOTLIBS)
 	@echo 'done: mfp'
