@@ -63,18 +63,17 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile.h>
-#include <Math/Point3D.h>
 #include <Math/Vector3D.h>
 
 using namespace ionizer;
 
 class delta {
 public:
-    delta(double energy, ROOT::Math::XYZPoint pos, ROOT::Math::XYZVector dir, unsigned particle_type) : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type)
+    delta(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, unsigned particle_type) : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type)
     {};
     delta() = default;
     double E; // [MeV]
-    ROOT::Math::XYZPoint position;
+    ROOT::Math::XYZVector position;
     ROOT::Math::XYZVector direction;
     unsigned type; // particle type
     double ptm() {
@@ -89,11 +88,9 @@ public:
 class cluster {
 public:
     cluster() = default;
-    cluster(int eh_pairs, double pos_x, double pos_y, double pos_z, double energy) : neh(eh_pairs), x(pos_x), y(pos_y), z(pos_z), E(energy) {};
+    cluster(int eh_pairs, ROOT::Math::XYZVector pos, double energy) : neh(eh_pairs), position(pos), E(energy) {};
     int neh;
-    double x; // position
-    double y;
-    double z;
+    ROOT::Math::XYZVector position;
     double E; // [eV] generating particle
 };
 
@@ -563,13 +560,11 @@ int main( int argc, char* argv[] )
     for( unsigned iev = 0; iev < nev; ++ iev ) {
 
         std::cout << iev << std::endl;
-
         std::stack <delta> deltas;
 
         // put track on std::stack:
-
         double xm = pitch * ( unirnd(rgen) - 0.5 ); // [mu] -p/2..p/2 at track mid
-        ROOT::Math::XYZPoint pos((xm - 0.5*width) * 1e-4, 0, 0);
+        ROOT::Math::XYZVector pos((xm - 0.5*width) * 1e-4, 0, 0);
         ROOT::Math::XYZVector dir(sin(turn), 0, cos(turn));
         deltas.emplace(Ekin0, pos, dir, default_particle_type); // beam particle is first "delta"
         // E : Ekin0; // [MeV]
@@ -593,10 +588,6 @@ int main( int argc, char* argv[] )
             deltas.pop();
 
             double Ek = t.E; // [MeV] kinetic energy
-            double xx = t.position.X();
-            double yy = t.position.Y();
-            double zz = t.position.Z();
-            std::vector<double> vect{t.direction.X(), t.direction.Y(), t.direction.Z()}; // direction cosines
             unsigned particle_type = t.type;
             unsigned nlast = nume;
 
@@ -610,7 +601,7 @@ int main( int argc, char* argv[] )
             << ", cost " << t.direction.Z()
             << ", u " << t.direction.X()
             << ", v " << t.direction.Y()
-            << ", z " << zz*1e4;
+            << ", z " << t.position.Z()*1e4;
 
             while(1) { // steps
 
@@ -797,19 +788,18 @@ int main( int argc, char* argv[] )
                 hstep5.Fill( xr*1e4 );
                 hstep0.Fill( xr*1e4 );
 
-                zz += xr*vect[2];
+                double pos_z = t.position.Z() + xr * t.direction.Z();
 
                 if( ldb && Ek < 1 )
-                std::cout << "step " << xr*1e4 << ", z " << zz*1e4 << std::endl;
+                std::cout << "step " << xr*1e4 << ", z " << pos_z*1e4 << std::endl;
 
-                hzz.Fill( zz*1e4 );
+                hzz.Fill( pos_z*1e4 );
 
-                if( zz < 0 || zz > depth*1e-4 ) break; // exit back or front
+                if( pos_z < 0 || pos_z > depth*1e-4 ) break; // exit back or front
 
-                xx += xr*vect[0];
-                yy += xr*vect[1];
+                t.position += xr * t.direction;
 
-                if( fabs( yy ) > 0.0200 ) break; // save time
+                if( fabs(t.position.Y()) > 0.0200 ) break; // save time
 
                 ++it;
 
@@ -895,9 +885,9 @@ int main( int argc, char* argv[] )
 
                     // transform into detector system:
 
-                    double cz = vect[2];     // delta direction
+                    double cz = t.direction.Z();     // delta direction
                     double sz = sqrt( 1 - cz*cz );
-                    double phif = atan2( vect[1], vect[0] );
+                    double phif = atan2(t.direction.Y(), t.direction.X());
                     double sf = sin(phif);
                     double cf = cos(phif);
                     double uu =  cz*cf * din[0] - sf * din[1] + sz*cf * din[2];
@@ -937,7 +927,7 @@ int main( int argc, char* argv[] )
                             // put delta on std::stack:
                             // E = Eeh*1E-6; // Ekin [MeV]
                             // particle_type = 4; // e
-                            deltas.emplace(Eeh*1E-6, ROOT::Math::XYZPoint(xx, yy, zz), ROOT::Math::XYZVector(uu, vv, ww), 4);
+                            deltas.emplace(Eeh*1E-6, t.position, ROOT::Math::XYZVector(uu, vv, ww), 4);
 
                             ++ndelta;
 
@@ -997,7 +987,7 @@ int main( int argc, char* argv[] )
 
                         hlogn.Fill( log(neh)/log10 );
 
-                        clusters.emplace_back(neh, xx, yy, zz, energy_gamma);
+                        clusters.emplace_back(neh, t.position, energy_gamma);
                         // E = energy_gamma; // [eV]
 
                     } // neh
@@ -1006,7 +996,7 @@ int main( int argc, char* argv[] )
 
                     if( ldb && Ek < 1 )
                     std::cout << "    Ek " << Ek*1e3
-                    << " keV, z " << zz*1e4 << ", neh " << neh
+                    << " keV, z " << t.position.Z()*1e4 << ", neh " << neh
                     << ", steps " << it << ", ion " << nloss << ", elas " << nscat
                     << ", cl " << clusters.size()
                     << std::endl;
@@ -1049,15 +1039,14 @@ int main( int argc, char* argv[] )
 
                     // change direction of delta VECT:
 
-                    double cz = vect[2];       // delta direction
+                    double cz = t.direction.Z();       // delta direction
                     double sz = sqrt( 1.0 - cz*cz );
-                    double phif = atan2( vect[1], vect[0] );
+                    double phif = atan2(t.direction.Y(), t.direction.X());
                     double sf = sin(phif);
                     double cf = cos(phif);
-                    vect[0] =  cz*cf * din[0] - sf * din[1] + sz*cf * din[2];
-                    vect[1] =  cz*sf * din[0] + cf * din[1] + sz*sf * din[2];
-                    vect[2] = -sz    * din[0]               + cz    * din[2];
-
+                    t.direction = ROOT::Math::XYZVector(cz*cf * din[0] - sf * din[1] + sz*cf * din[2],
+                                                        cz*sf * din[0] + cf * din[1] + sz*sf * din[2],
+                                                        -sz    * din[0]               + cz    * din[2]);
                 } // elastic
 
             } // while steps
@@ -1104,9 +1093,9 @@ int main( int argc, char* argv[] )
 
         for( unsigned i = 0; i < clusters.size(); ++i ) {
 
-            double xx = clusters[i].x*1e4; // [mu]
-            double yy = clusters[i].y*1e4; // [mu]
-            double zz = clusters[i].z*1e4; // [mu]
+            double xx = clusters[i].position.X()*1e4; // [mu]
+            double yy = clusters[i].position.Y()*1e4; // [mu]
+            double zz = clusters[i].position.Z()*1e4; // [mu]
             int neh = clusters[i].neh;
 
             if( iev < 11 ) {
