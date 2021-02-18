@@ -1500,15 +1500,15 @@ std::stack<double> shells(double energy_gamma)
 
     // PHOTOABSORPTION IN VALENCE BAND
     if(is <= 1) {
-        double rv = unirnd(rgen);
         if(energy_gamma < 0.1) {
             return veh;
         }
+
+        double rv = unirnd(rgen);
         if(energy_gamma < energy_valence) {
             veh.push(rv * energy_gamma);
-            veh.push((1-rv) * energy_gamma);
-        }
-        else {
+            veh.push((1 - rv) * energy_gamma);
+        } else {
             veh.push(rv * energy_valence);
             veh.push(energy_gamma - rv * energy_valence);
         }
@@ -1532,24 +1532,23 @@ std::stack<double> shells(double energy_gamma)
     int ks = 1;
     if( is <= 1 ) {
         ks = 1;
-    } else if( is <= 3 ) {
-        ks = 1;
-        if( raug > auger_prob_integral[is][1] ) {
+    } else if(is <= 3) {
+        if(raug > auger_prob_integral[is][1]) {
             ks = 2;
         }
     } else {
-        if( raug < auger_prob_integral[is][1] ) {
-            ks = 1;
-        } else {
-            for( int js = 2; js <= nvac[is]; ++js )
-            if( raug >= auger_prob_integral[is][js-1] && raug < auger_prob_integral[is][js] )
-            ks = js;
+        if(raug >= auger_prob_integral[is][1]) {
+            for( int js = 2; js <= nvac[is]; ++js ) {
+                if( raug >= auger_prob_integral[is][js-1] && raug < auger_prob_integral[is][js] ) {
+                    ks = js;
+                }
+            }
         }
     }
 
-    if( is == 2 ) {
+    if(is == 2) {
         // L23-SHELL VACANCIES
-        if( ks == 1 ) {
+        if(ks == 1) {
             // TRANSITION L23 M M
             transition(energy_valence, auger_energy[2][1], veh);
         }
@@ -1565,8 +1564,7 @@ std::stack<double> shells(double energy_gamma)
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
-        }
-        else {
+        } else {
             // TRANSITION L1 M M
             transition(energy_valence, auger_energy[3][1], veh);
         }
@@ -1676,7 +1674,7 @@ std::stack<double> shells(double energy_gamma)
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
-            }else {
+            } else {
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             }
