@@ -567,9 +567,9 @@ int main( int argc, char* argv[] )
     // EGAP = GAP ENERGY IN eV
     // EMIN = THRESHOLD ENERGY (ALIG ET AL., PRB22 (1980), 5565)
 
-    double Egap = 1.17 - 4.73e-4 * temp*temp / (636+temp);
+    double energy_gap = 1.17 - 4.73e-4 * temp*temp / (636+temp);
 
-    double Ethr = 1.5*Egap; // energy conservation
+    double energy_threshold = 1.5*energy_gap; // energy conservation
 
     double eom0 = 0.063; // phonons
     double aaa = 5.2;    // Alig 1980
@@ -925,7 +925,7 @@ int main( int argc, char* argv[] )
 
                     std::stack <double> veh;
 
-                    if( Eg > Ethr )
+                    if( Eg > energy_threshold )
                     shells( Eg, veh );
 
                     hnprim.Fill( veh.size() );
@@ -967,27 +967,27 @@ int main( int argc, char* argv[] )
 
                         // slow down low energy e and h: 95% of CPU time
 
-                        while( fast == 0 && Eeh > Ethr ) {
+                        while( fast == 0 && Eeh > energy_threshold ) {
 
                             double pion = 1 / ( 1 + aaa*105/twopi * sqrt(Eeh-eom0) /
-                            pow( Eeh - Ethr, 3.5 ) );
+                            pow( Eeh - energy_threshold, 3.5 ) );
                             // for e and h
 
                             if( unirnd(rgen) < pion ) { // ionization
 
                                 ++neh;
 
-                                double E1 = gena1() * (Eeh-Ethr);
-                                double E2 = gena2() * (Eeh-Ethr-E1);
+                                double E1 = gena1() * (Eeh-energy_threshold);
+                                double E2 = gena2() * (Eeh-energy_threshold-E1);
 
                                 //cout << "      ion " << Eeh << " => " << E1 << " + " << E2 << std::endl;
 
-                                if( E1 > Ethr )
+                                if( E1 > energy_threshold )
                                 veh.push( E1 );
-                                if( E2 > Ethr )
+                                if( E2 > energy_threshold )
                                 veh.push( E2 );
 
-                                Eeh = Eeh - E1 - E2 - Ethr;
+                                Eeh = Eeh - E1 - E2 - energy_threshold;
                             }
                             else
                             Eeh = Eeh - eom0; // phonon emission
@@ -1455,7 +1455,7 @@ void shells( double Eg, std::stack <double> &veh )
     // OUTPUT:
     // veh ENERGIES OF PRIMARY e/h
 
-    //Eg = Eg - Egap; // double counting?
+    //Eg = Eg - energy_gap; // double counting?
 
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
     double Ev = Eshel[1]; // 12.0 eV
