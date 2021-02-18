@@ -102,7 +102,6 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]);
 
 double gena1();
 double gena2();
-double gentri();
 std::stack <double> shells(double energy_gamma);
 void transition(double energy_valence, double energy_auger, std::stack <double> &veh);
 
@@ -1434,19 +1433,6 @@ double gena2()
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-double gentri() // -1..1
-{
-    double x = 0, r2 = 0, trian = 0;
-    do {
-        x = -1 + 2*unirnd(rgen);
-        r2 = unirnd(rgen);
-        trian = x < 0 ? x + 1 : -x + 1;
-    } while(trian > r2); // rejection method
-
-    return x;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 std::stack<double> shells( double energy_gamma)
 {
 
@@ -1772,9 +1758,7 @@ std::stack<double> shells( double energy_gamma)
                 // TRANSITION L1 M M
                 transition(energy_valence, augde[3][1], veh);
             }
-
         } // ks
-
     } // is 4
 
     return veh;
@@ -1782,6 +1766,17 @@ std::stack<double> shells( double energy_gamma)
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void transition(double energy_valence, double energy_auger, std::stack <double> &veh) {
+
+    auto gentri = [&]() { // -1..1
+        double x = 0, r2 = 0, trian = 0;
+        do {
+            x = -1 + 2*unirnd(rgen);
+            r2 = unirnd(rgen);
+            trian = x < 0 ? x + 1 : -x + 1;
+        } while(trian > r2); // rejection method
+
+        return x;
+    };
 
     // AUGER ELECTRON
     double rEv = ( 1 + gentri() ) * energy_valence; // 0..2*Ev
