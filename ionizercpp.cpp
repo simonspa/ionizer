@@ -64,7 +64,7 @@
 
 class delta {
 public:
-    delta(double energy, double pos_x, double pos_y, double pos_z, double dir_u, double dir_v, double dir_w, unsigned type) : E(energy), x(pos_x), y(pos_y), z(pos_z), u(dir_u), v(dir_v), w(dir_w), npm(type)
+    delta(double energy, double pos_x, double pos_y, double pos_z, double dir_u, double dir_v, double dir_w, unsigned particle_type) : E(energy), x(pos_x), y(pos_y), z(pos_z), u(dir_u), v(dir_v), w(dir_w), type(particle_type)
     {};
     delta() = default;
     double E; // [MeV]
@@ -74,12 +74,12 @@ public:
     double u; // direction
     double v;
     double w;
-    unsigned npm; // particle type
+    unsigned type; // particle type
     double ptm() {
-        if(      npm == 1 ) return 938.2723; // proton
-        else if( npm == 2 ) return 139.578; // pion
-        else if( npm == 3 ) return 493.67; // K
-        else if( npm == 5 ) return 105.65932; // mu
+        if(      type == 1 ) return 938.2723; // proton
+        else if( type == 2 ) return 139.578; // pion
+        else if( type == 3 ) return 493.67; // K
+        else if( type == 5 ) return 105.65932; // mu
         else return 0.51099906; // e mass [MeV]
     };
 };
@@ -227,7 +227,7 @@ int main( int argc, char* argv[] )
 
     // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
 
-    unsigned npm0 = 4; // e
+    unsigned default_particle_type = 4; // e
 
     double temp = 298; // [K]
 
@@ -237,7 +237,7 @@ int main( int argc, char* argv[] )
     double fac = 8.0 * M_PI * rydberg_constant*rydberg_constant * pow( 0.529177e-8, 2 ) / electron_mass_ev;
     double log10 = log(10);
 
-    std::cout << "  particle type     " << npm0 << std::endl;
+    std::cout << "  particle type     " << default_particle_type << std::endl;
     std::cout << "  kinetic energy    " << Ekin0 << " MeV" << std::endl;
     std::cout << "  number of events  " << nev << std::endl;
     std::cout << "  pixel pitch       " << pitch << " um" << std::endl;
@@ -588,7 +588,7 @@ int main( int argc, char* argv[] )
 
         double xm = pitch * ( unirnd(rgen) - 0.5 ); // [mu] -p/2..p/2 at track mid
 
-        deltas.emplace(Ekin0, (xm - 0.5*width) * 1e-4, 0, 0, sin(turn), 0, cos(turn), npm0); // beam particle is first "delta"
+        deltas.emplace(Ekin0, (xm - 0.5*width) * 1e-4, 0, 0, sin(turn), 0, cos(turn), default_particle_type); // beam particle is first "delta"
         // E : Ekin0; // [MeV]
         // x : entry point is left;
         // y :  [cm]
@@ -613,11 +613,8 @@ int main( int argc, char* argv[] )
             double xx = t.x;
             double yy = t.y;
             double zz = t.z;
-            double vect[3];
-            vect[0] = t.u; // direction cosines
-            vect[1] = t.v;
-            vect[2] = t.w;
-            unsigned npm = t.npm;
+            std::vector<double> vect{t.u, t.v, t.w}; // direction cosines
+            unsigned particle_type = t.type;
             unsigned nlast = nume;
 
             double xm0 = 1;
@@ -644,7 +641,7 @@ int main( int argc, char* argv[] )
                     double betasq = bg*bg / ( 1 + bg*bg );
                     double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/electron_mass_mev + 0.5*electron_mass_mev/ptm + gam );
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
-                    if( npm == 4 ) Emax = 0.5*Ek;
+                    if( particle_type == 4 ) Emax = 0.5*Ek;
                     // std::maximum energy loss for incident electrons
                     Emax = 1e6 * Emax; // eV
 
@@ -707,7 +704,7 @@ int main( int argc, char* argv[] )
                         //if( E[j] > 1838 ) sig[2][j] = 0; // TEST, 7% better resolution
 
                         double uef = 1 - E[j] * bemx;
-                        if( npm == 4 )
+                        if( particle_type == 4 )
                         uef = 1 +
                         pow( E[j] / ( EkeV - E[j] ), 2 ) +
                         pow( (gam-1) / gam * E[j]/EkeV, 2 ) -
@@ -772,7 +769,7 @@ int main( int argc, char* argv[] )
 
                     // elastic:
 
-                    if( npm == 4 ) { // ELECTRONS
+                    if( particle_type == 4 ) { // ELECTRONS
 
                         //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / EkeV; // Mazziotta
                         gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
@@ -796,7 +793,7 @@ int main( int argc, char* argv[] )
                     Ekprev = Ek;
 
                     if( ldb )
-                    std::cout << "  ev " << iev << " type " << npm << ", Ekin " << Ek*1e3 << " keV"
+                    std::cout << "  ev " << iev << " type " << particle_type << ", Ekin " << Ek*1e3 << " keV"
                     << ", beta " << sqrt(betasq) << ", gam " << gam << std::endl
                     << "  Emax " << Emax << ", nlast " << nlast << ", Elast " << E[nlast]
                     << ", norm " << totsig[nlast] << std::endl
@@ -909,10 +906,7 @@ int main( int argc, char* argv[] )
                     // emission angle of the delta ray:
                     // CDTS = SQRT( DE * RB / ( E * ( DE + TME ) ) ) // like Geant
 
-                    std::vector <double> din(3);
-                    din[0] = sint*cos(phi);
-                    din[1] = sint*sin(phi);
-                    din[2] = cost;
+                    std::vector <double> din{sint*cos(phi), sint*sin(phi), cost};
 
                     htet.Fill( wt*asin(sint) ); // peak at 90, tail to 45, elastic forward
 
@@ -958,7 +952,7 @@ int main( int argc, char* argv[] )
 
                             // put delta on std::stack:
                             // E = Eeh*1E-6; // Ekin [MeV]
-                            // npm = 4; // e
+                            // particle_type = 4; // e
                             deltas.emplace(Eeh*1E-6, xx, yy, zz, uu, vv, ww, 4);
 
                             ++ndelta;
@@ -1038,7 +1032,7 @@ int main( int argc, char* argv[] )
                         break;
                     }
 
-                    if( npm == 4 ) { // electrons, update elastic cross section at new Ek
+                    if( particle_type == 4 ) { // electrons, update elastic cross section at new Ek
 
                         //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (Ek*1E6); // Mazziotta
                         double pmom = sqrt( Ek * ( Ek + 2*ptm ) ); // [MeV/c] 2nd binomial
@@ -1257,7 +1251,7 @@ int main( int argc, char* argv[] )
 
     std::cout << "done: events " << nev << std::endl;
 
-    std::cout << "  particle type     " << npm0 << std::endl;
+    std::cout << "  particle type     " << default_particle_type << std::endl;
     std::cout << "  kinetic energy    " << Ekin0 << " MeV" << std::endl;
     std::cout << "  number of events  " << nev << std::endl;
     std::cout << "  pixel pitch       " << pitch << " um" << std::endl;
