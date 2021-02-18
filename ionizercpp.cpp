@@ -103,7 +103,7 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]);
 double gena1();
 double gena2();
 double gentri();
-void shells( double Eg, std::stack <double> &veh );
+void shells( double energy_gamma, std::stack <double> &veh );
 void TRL1MM( double Ev, std::stack <double> &veh );
 void TRL23MM( double Ev, std::stack <double> &veh );
 
@@ -841,28 +841,28 @@ int main( int argc, char* argv[] )
                     for( ; je <= nlast; ++je )
                     if( yr < totsig[je] ) break;
 
-                    double Eg = E[je-1] + ( E[je] - E[je-1] ) * unirnd(rgen); // [eV]
+                    double energy_gamma = E[je-1] + ( E[je] - E[je-1] ) * unirnd(rgen); // [eV]
 
-                    hde0.Fill( Eg ); // M and L shells
-                    hde1.Fill( Eg ); // K shell
-                    hde2.Fill( Eg*1e-3 );
-                    hdel.Fill( log(Eg)/log10 );
+                    hde0.Fill( energy_gamma ); // M and L shells
+                    hde1.Fill( energy_gamma ); // K shell
+                    hde2.Fill( energy_gamma*1e-3 );
+                    hdel.Fill( log(energy_gamma)/log10 );
 
-                    double resekin = Ek - Eg*1E-6; // [ MeV]
+                    double resekin = Ek - energy_gamma*1E-6; // [ MeV]
 
                     // cut off for further movement: [MeV]
 
                     if( resekin < explicit_delta_energy_cut_keV*1e-3 ) {
 
-                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << Eg*1e-3 << resekin*1e-3
-                        Eg = Ek*1E6; // [eV]
-                        resekin = Ek - Eg; // zero
-                        // std::cout << "LAST ENERGY LOSS" << Eg << resekin
+                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << energy_gamma*1e-3 << resekin*1e-3
+                        energy_gamma = Ek*1E6; // [eV]
+                        resekin = Ek - energy_gamma; // zero
+                        // std::cout << "LAST ENERGY LOSS" << energy_gamma << resekin
 
                     }
 
-                    //if( Eg < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
-                    tde += Eg; // [eV]
+                    //if( energy_gamma < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
+                    tde += energy_gamma; // [eV]
 
                     // emission angle from delta:
 
@@ -873,8 +873,8 @@ int main( int argc, char* argv[] )
                     // SINT = COST ! flip
                     // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / Ek ) ! wrong
 
-                    //double cost = sqrt( Eg / (2*electron_mass_ev + Eg) ); // M. Swartz
-                    double cost = sqrt( Eg / (2*electron_mass_ev + Eg) * ( Ek + 2*electron_mass_ev*1e-6 ) / Ek );
+                    //double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) ); // M. Swartz
+                    double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) * ( Ek + 2*electron_mass_ev*1e-6 ) / Ek );
                     // Penelope, Geant4
                     double sint;
                     if( cost*cost <= 1 )
@@ -925,8 +925,8 @@ int main( int argc, char* argv[] )
 
                     std::stack <double> veh;
 
-                    if( Eg > energy_threshold )
-                    shells( Eg, veh );
+                    if( energy_gamma > energy_threshold )
+                    shells( energy_gamma, veh );
 
                     hnprim.Fill( veh.size() );
 
@@ -1005,7 +1005,7 @@ int main( int argc, char* argv[] )
                     meh += neh;
                     sumeh2 += neh*neh;
 
-                    //cout << "  dE " << Eg << " eV, neh " << neh << std::endl;
+                    //cout << "  dE " << energy_gamma << " eV, neh " << neh << std::endl;
 
                     // store charge cluster:
 
@@ -1013,12 +1013,12 @@ int main( int argc, char* argv[] )
 
                         hlogn.Fill( log(neh)/log10 );
 
-                        clusters.emplace_back(neh, xx, yy, zz, Eg);
-                        // E = Eg; // [eV]
+                        clusters.emplace_back(neh, xx, yy, zz, energy_gamma);
+                        // E = energy_gamma; // [eV]
 
                     } // neh
 
-                    Ek -= Eg*1E-6; // [MeV]
+                    Ek -= energy_gamma*1E-6; // [MeV]
 
                     if( ldb && Ek < 1 )
                     std::cout << "    Ek " << Ek*1e3
@@ -1447,7 +1447,7 @@ double gentri() // -1..1
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void shells( double Eg, std::stack <double> &veh )
+void shells( double energy_gamma, std::stack <double> &veh )
 {
     // INPUT:
     // EG = VIRTUAL GAMMA ENERGY [eV]
@@ -1455,7 +1455,7 @@ void shells( double Eg, std::stack <double> &veh )
     // OUTPUT:
     // veh ENERGIES OF PRIMARY e/h
 
-    //Eg = Eg - energy_gap; // double counting?
+    //energy_gamma = energy_gamma - energy_gap; // double counting?
 
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
     double Ev = Eshel[1]; // 12.0 eV
@@ -1463,12 +1463,12 @@ void shells( double Eg, std::stack <double> &veh )
     double PV[5];
 
     int is = -1;
-    if( Eg <= Eshel[1] )
+    if( energy_gamma <= Eshel[1] )
     is = 0;
-    else if( Eg <= EPP[3] )
+    else if( energy_gamma <= EPP[3] )
     is = 1;
     else {
-        if( Eg > EPP[nep] ) {
+        if( energy_gamma > EPP[nep] ) {
             PV[1] = PM[nep];
             PV[2] = PL23[nep];
             PV[3] = PL1[nep];
@@ -1477,14 +1477,14 @@ void shells( double Eg, std::stack <double> &veh )
         else {
             unsigned iep = 3;
             for( ; iep < nep; ++iep )
-            if( Eg > EPP[iep] && Eg <= EPP[iep+1] ) break;
+            if( energy_gamma > EPP[iep] && energy_gamma <= EPP[iep+1] ) break;
 
             // interpolate:
 
-            PV[1] = PM[iep] + ( PM[iep+1] - PM[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( Eg - EPP[iep] );
-            PV[2] = PL23[iep] + ( PL23[iep+1] - PL23[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( Eg - EPP[iep] );
-            PV[3] = PL1[iep] + ( PL1[iep+1] - PL1[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( Eg - EPP[iep] );
-            PV[4] = PK[iep] + ( PK[iep+1] - PK[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( Eg - EPP[iep] );
+            PV[1] = PM[iep] + ( PM[iep+1] - PM[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
+            PV[2] = PL23[iep] + ( PL23[iep+1] - PL23[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
+            PV[3] = PL1[iep] + ( PL1[iep+1] - PL1[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
+            PV[4] = PK[iep] + ( PK[iep+1] - PK[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
         }
 
         double PPV = PV[1] + PV[2] + PV[3] + PV[4];
@@ -1503,7 +1503,7 @@ void shells( double Eg, std::stack <double> &veh )
         if( is > 4 ) is = 4;
     }
 
-    //cout << "  shells for " << Eg << " eV, Ev " << Ev << ", is " << is << std::endl;
+    //cout << "  shells for " << energy_gamma << " eV, Ev " << Ev << ", is " << is << std::endl;
 
     // PROCESSES:
 
@@ -1512,7 +1512,7 @@ void shells( double Eg, std::stack <double> &veh )
     if( is <= 1 ) {
 
         double rv = unirnd(rgen);
-        double Ee = Eg;
+        double Ee = energy_gamma;
         if( Ee < 0.1 ) return;
         if( Ee < Ev ) {
             veh.push( rv*Ee );
@@ -1528,10 +1528,10 @@ void shells( double Eg, std::stack <double> &veh )
     // PHOTOABSORPTION IN AN INNER SHELL
 
     double Eth = Eshel[is];
-    double Ephe = Eg - Eth;
+    double Ephe = energy_gamma - Eth;
     if( Ephe <= 0 ) {
         std::cout << "shells: photoelectron with negative energy "
-        << Eg << ", shell " << is << " at " << Eth << " eV" << std::endl;
+        << energy_gamma << ", shell " << is << " at " << Eth << " eV" << std::endl;
         return;
     }
 
