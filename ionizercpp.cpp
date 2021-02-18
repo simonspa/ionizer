@@ -48,6 +48,8 @@
 // Output file:
 // ionizer.hist
 
+#include "ionizercpp.hpp"
+
 #include <cstdlib> // atoi
 #include <iostream> // std::cout
 #include <fstream> // files
@@ -61,6 +63,8 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile.h>
+
+using namespace ionizer;
 
 class delta {
 public:
@@ -95,6 +99,62 @@ public:
     double E; // [eV] generating particle
 };
 
+DepositionBichsel::DepositionBichsel() {
+    energy_shell[1] =   12.0; // valence band upper edge (holes live below)
+    energy_shell[2] =   99.2; // M
+    energy_shell[3] =  148.7; // L
+    energy_shell[4] = 1839.0; // K
+
+    for( unsigned n = 1; n <= 4; ++n ) {
+        for( unsigned i = 1; i <= 9; ++i ) {
+            auger_prob_integral[n][i] = 0;
+            auger_energy[n][i] = 0;
+        }
+    }
+
+    // auger_prob_integral(KSH,J) = PROBABILITA" INTEGRALI DEI VARI PROCESSI DI
+    // EMISSIONE AUGR DALLA SHELL KSH
+
+    // auger_prob_integral(KSH,J) = 1 PER L"ULTIMO VALORE DI J
+
+    // KSH = 4 --> SHELL K
+    // KSH = 3 --> SHELL L1
+    // KSH = 2 --> SHELL L23
+
+    auger_prob_integral[4][1] = 0.1920;
+    auger_prob_integral[4][2] = 0.3885 + auger_prob_integral[4][1];
+    auger_prob_integral[4][3] = 0.2325 + auger_prob_integral[4][2];
+    auger_prob_integral[4][4] = 0.0720 + auger_prob_integral[4][3];
+    auger_prob_integral[4][5] = 0.0030 + auger_prob_integral[4][4];
+    auger_prob_integral[4][6] = 0.1000 + auger_prob_integral[4][5];
+    auger_prob_integral[4][7] = 0.0040 + auger_prob_integral[4][6];
+    auger_prob_integral[4][8] = 0.0070 + auger_prob_integral[4][7];
+    auger_prob_integral[4][9] = 0.0010 + auger_prob_integral[4][8];
+    auger_prob_integral[3][1] = 0.0250;
+    auger_prob_integral[3][2] = 0.9750 + auger_prob_integral[3][1];
+    auger_prob_integral[2][1] = 0.9990;
+    auger_prob_integral[2][2] = 0.0010 + auger_prob_integral[2][1];
+
+    // auger_energy[KSH, J) = ENERGIA IN eV DELL"ELETTRONE AUGR
+    // EMESSO DALLA SHELL KSH NEL PROCESSO J
+
+    auger_energy[4][1] = 1541.6;
+    auger_energy[4][2] = 1591.1;
+    auger_energy[4][3] = 1640.6;
+    auger_energy[4][4] = 1690.3;
+    auger_energy[4][5] = 1690.3;
+    auger_energy[4][6] = 1739.8;
+    auger_energy[4][7] = 1739.8;
+    auger_energy[4][8] = 1839.0;
+    auger_energy[4][9] = 1839.0;
+
+    auger_energy[3][1] = 148.7;
+    auger_energy[3][2] =  49.5;
+
+    auger_energy[2][1] = 99.2;
+    auger_energy[2][2] =  0.0;
+}
+
 // forward declarations:
 void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], double (&ep_2)[], double (&dfdE)[]);
 void read_macomtab(int n2, unsigned int nume, double (&sig)[]);
@@ -102,13 +162,10 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]);
 
 double gena1();
 double gena2();
-std::stack <double> shells(double energy_gamma);
-void transition(double energy_valence, double energy_auger, std::stack <double> &veh);
 
 // global variables: (initialized in main, used in shells)
 
 const unsigned lsh = 5;
-double energy_shell[lsh], auger_prob_integral[lsh][10], auger_energy[lsh][10];
 int nvac[lsh];
 
 const unsigned lep = 14;
@@ -508,60 +565,6 @@ int main( int argc, char* argv[] )
     nvac[3] = 2;
     nvac[4] = 9; // possible transitions to it
 
-    energy_shell[1] =   12.0; // valence band upper edge (holes live below)
-    energy_shell[2] =   99.2; // M
-    energy_shell[3] =  148.7; // L
-    energy_shell[4] = 1839.0; // K
-
-    for( unsigned n = 1; n <= 4; ++n )
-    for( unsigned i = 1; i <= 9; ++i ) {
-        auger_prob_integral[n][i] = 0;
-        auger_energy[n][i] = 0;
-    }
-
-    // auger_prob_integral(KSH,J) = PROBABILITA" INTEGRALI DEI VARI PROCESSI DI
-    // EMISSIONE AUGR DALLA SHELL KSH
-
-    // auger_prob_integral(KSH,J) = 1 PER L"ULTIMO VALORE DI J
-
-    // KSH = 4 --> SHELL K
-    // KSH = 3 --> SHELL L1
-    // KSH = 2 --> SHELL L23
-
-    auger_prob_integral[4][1] = 0.1920;
-    auger_prob_integral[4][2] = 0.3885 + auger_prob_integral[4][1];
-    auger_prob_integral[4][3] = 0.2325 + auger_prob_integral[4][2];
-    auger_prob_integral[4][4] = 0.0720 + auger_prob_integral[4][3];
-    auger_prob_integral[4][5] = 0.0030 + auger_prob_integral[4][4];
-    auger_prob_integral[4][6] = 0.1000 + auger_prob_integral[4][5];
-    auger_prob_integral[4][7] = 0.0040 + auger_prob_integral[4][6];
-    auger_prob_integral[4][8] = 0.0070 + auger_prob_integral[4][7];
-    auger_prob_integral[4][9] = 0.0010 + auger_prob_integral[4][8];
-    auger_prob_integral[3][1] = 0.0250;
-    auger_prob_integral[3][2] = 0.9750 + auger_prob_integral[3][1];
-    auger_prob_integral[2][1] = 0.9990;
-    auger_prob_integral[2][2] = 0.0010 + auger_prob_integral[2][1];
-
-    // auger_energy[KSH, J) = ENERGIA IN eV DELL"ELETTRONE AUGR
-    // EMESSO DALLA SHELL KSH NEL PROCESSO J
-
-    auger_energy[4][1] = 1541.6;
-    auger_energy[4][2] = 1591.1;
-    auger_energy[4][3] = 1640.6;
-    auger_energy[4][4] = 1690.3;
-    auger_energy[4][5] = 1690.3;
-    auger_energy[4][6] = 1739.8;
-    auger_energy[4][7] = 1739.8;
-    auger_energy[4][8] = 1839.0;
-    auger_energy[4][9] = 1839.0;
-
-    auger_energy[3][1] = 148.7;
-    auger_energy[3][2] =  49.5;
-
-    auger_energy[2][1] = 99.2;
-    auger_energy[2][2] =  0.0;
-
-
     // EGAP = GAP ENERGY IN eV
     // EMIN = THRESHOLD ENERGY (ALIG ET AL., PRB22 (1980), 5565)
 
@@ -572,6 +575,7 @@ int main( int argc, char* argv[] )
     double eom0 = 0.063; // phonons
     double aaa = 5.2;    // Alig 1980
 
+    DepositionBichsel ionizer;
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
     // EVENT LOOP:
@@ -924,7 +928,7 @@ int main( int argc, char* argv[] )
                     std::stack <double> veh;
 
                     if( energy_gamma > energy_threshold ) {
-                        veh = shells( energy_gamma);
+                        veh = ionizer.shells( energy_gamma);
                     }
 
                     hnprim.Fill( veh.size() );
@@ -1433,7 +1437,7 @@ double gena2()
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-std::stack<double> shells(double energy_gamma)
+std::stack<double> DepositionBichsel::shells(double energy_gamma)
 {
 
     // INPUT:
@@ -1685,7 +1689,7 @@ std::stack<double> shells(double energy_gamma)
 } // SHELLS
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void transition(double energy_valence, double energy_auger, std::stack <double> &veh) {
+void DepositionBichsel::transition(double energy_valence, double energy_auger, std::stack <double> &veh) {
 
     auto gentri = [&]() { // -1..1
         double x = 0, r2 = 0, trian = 0;
