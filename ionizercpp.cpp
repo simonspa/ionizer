@@ -76,7 +76,7 @@ public:
     ROOT::Math::XYZVector position;
     ROOT::Math::XYZVector direction;
     unsigned type; // particle type
-    double ptm() {
+    double mass() {
         if(      type == 1 ) return 938.2723; // proton
         else if( type == 2 ) return 139.578; // pion
         else if( type == 3 ) return 493.67; // K
@@ -580,9 +580,9 @@ int main( int argc, char* argv[] )
         unsigned meh = 0;
         unsigned sumeh2 = 0;
         std::vector <cluster> clusters;
-        double Ekprev = 9e9; // update flag
 
         while( ! deltas.empty() ) {
+            double Ekprev = 9e9; // update flag for next delta
 
             delta t = deltas.top();
             deltas.pop();
@@ -593,13 +593,8 @@ int main( int argc, char* argv[] )
             double xlel = 1;
             double gn = 1;
             double totsig[lime];
-            double ptm = t.ptm(); // e 0.51100 MeV
 
-            std::cout << "  delta " << t.E*1e3 << " keV"
-            << ", cost " << t.direction.Z()
-            << ", u " << t.direction.X()
-            << ", v " << t.direction.Y()
-            << ", z " << t.position.Z()*1e4;
+            std::cout << "  delta " << t.E*1e3 << " keV" << ", cost " << t.direction.Z() << ", u " << t.direction.X() << ", v " << t.direction.Y() << ", z " << t.position.Z()*1e4;
 
             while(1) { // steps
 
@@ -607,11 +602,11 @@ int main( int argc, char* argv[] )
 
                     double zi = 1.0;
 
-                    double gam = t.E / ptm + 1.0; // W = total energy / restmass
+                    double gam = t.E / t.mass() + 1.0; // W = total energy / restmass
                     double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma = p/m
-                    double pmom = ptm*bg; // [MeV/c]
+                    double pmom = t.mass()*bg; // [MeV/c]
                     double betasq = bg*bg / ( 1 + bg*bg );
-                    double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/electron_mass_mev + 0.5*electron_mass_mev/ptm + gam );
+                    double Emax = t.mass() * ( gam*gam - 1 ) / ( 0.5*t.mass()/electron_mass_mev + 0.5*electron_mass_mev/t.mass() + gam );
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
                     if(t.type == 4) {
                         Emax = 0.5*t.E;
@@ -756,7 +751,7 @@ int main( int argc, char* argv[] )
                     }
                     else { //  OTHER PARTICLES
 
-                        double getot = t.E + ptm;
+                        double getot = t.E + t.mass();
                         xlel = std::min( 2232.0 * radiation_length * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radiation_length );
                         // units ?
                     }
@@ -803,12 +798,11 @@ int main( int argc, char* argv[] )
 
                 ++it;
 
-                if( unirnd(rgen) > tlam*xlel ) { // INELASTIC (ionization) PROCESS
+                if(unirnd(rgen) > tlam*xlel) { // INELASTIC (ionization) PROCESS
 
                     ++nloss;
 
                     // GENERATE VIRTUAL GAMMA:
-
                     double yr = unirnd(rgen); // inversion method
                     unsigned je = 2;
                     for( ; je <= nlast; ++je )
@@ -824,14 +818,11 @@ int main( int argc, char* argv[] )
                     double resekin = t.E - energy_gamma*1E-6; // [ MeV]
 
                     // cut off for further movement: [MeV]
-
-                    if( resekin < explicit_delta_energy_cut_keV*1e-3 ) {
-
+                    if(resekin < explicit_delta_energy_cut_keV*1e-3) {
                         // std::cout << "@@@ NEG RESIDUAL ENERGY" << t.E*1e3 << energy_gamma*1e-3 << resekin*1e-3
                         energy_gamma = t.E*1E6; // [eV]
                         resekin = t.E - energy_gamma; // zero
                         // std::cout << "LAST ENERGY LOSS" << energy_gamma << resekin
-
                     }
 
                     //if( energy_gamma < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
@@ -850,9 +841,9 @@ int main( int argc, char* argv[] )
                     double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) * ( t.E + 2*electron_mass_ev*1e-6 ) / t.E );
                     // Penelope, Geant4
                     double sint;
-                    if( cost*cost <= 1 )
-                    sint = sqrt( 1 - cost*cost ); // mostly 90 deg
-                    else {
+                    if( cost*cost <= 1 ) {
+                        sint = sqrt( 1 - cost*cost ); // mostly 90 deg
+                    } else {
                         std::cout << " NAN 1-cost " << 1-cost << ", 1-cost^2 " << 1-cost*cost << std::endl;
                         sint = 0;
                     }
@@ -880,54 +871,43 @@ int main( int argc, char* argv[] )
                     // CDTS = SQRT( DE * RB / ( E * ( DE + TME ) ) ) // like Geant
 
                     std::vector <double> din{sint*cos(phi), sint*sin(phi), cost};
-
                     htet.Fill( wt*asin(sint) ); // peak at 90, tail to 45, elastic forward
 
                     // transform into detector system:
-
                     double cz = t.direction.Z();     // delta direction
-                    double sz = sqrt( 1 - cz*cz );
+                    double sz = sqrt(1 - cz*cz);
                     double phif = atan2(t.direction.Y(), t.direction.X());
                     double sf = sin(phif);
                     double cf = cos(phif);
-                    double uu =  cz*cf * din[0] - sf * din[1] + sz*cf * din[2];
-                    double vv =  cz*sf * din[0] + cf * din[1] + sz*sf * din[2];
-                    double ww = -sz    * din[0]               + cz    * din[2];
+                    ROOT::Math::XYZVector delta_direction(cz*cf * din[0] - sf * din[1] + sz*cf * din[2],
+                                                          cz*sf * din[0] + cf * din[1] + sz*sf * din[2],
+                                                          -sz    * din[0]               + cz    * din[2]);
 
                     // GENERATE PRIMARY e-h:
-
                     std::stack <double> veh;
-
-                    if( energy_gamma > energy_threshold ) {
-                        veh = ionizer.shells( energy_gamma);
+                    if(energy_gamma > energy_threshold) {
+                        veh = ionizer.shells(energy_gamma);
                     }
 
-                    hnprim.Fill( veh.size() );
+                    hnprim.Fill(veh.size());
 
                     // process e and h
-
                     double sumEeh{0};
                     unsigned neh{0};
 
                     while( ! veh.empty() ) {
 
                         double Eeh = veh.top();
-
-                        if( Eeh > 1 )
-                        hlogE.Fill( log(Eeh)/log10 );
-                        else
-                        hlogE.Fill( 0 );
-
-                        //cout << "    eh "<< veh.size() << ", Eeh " << Eeh << ", neh " << neh << std::endl;
-
                         veh.pop();
+
+                        hlogE.Fill( Eeh > 1 ? log(Eeh)/log10 : 0);
 
                         if( Eeh > explicit_delta_energy_cut_keV*1e3 ) {
 
                             // put delta on std::stack:
                             // E = Eeh*1E-6; // Ekin [MeV]
                             // particle_type = 4; // e
-                            deltas.emplace(Eeh*1E-6, t.position, ROOT::Math::XYZVector(uu, vv, ww), 4);
+                            deltas.emplace(Eeh*1E-6, t.position, delta_direction, 4);
 
                             ++ndelta;
 
@@ -1009,7 +989,7 @@ int main( int argc, char* argv[] )
                     if(t.type == 4) { // electrons, update elastic cross section at new t.E
 
                         //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E*1E6); // Mazziotta
-                        double pmom = sqrt( t.E * ( t.E + 2*ptm ) ); // [MeV/c] 2nd binomial
+                        double pmom = sqrt( t.E * ( t.E + 2*t.mass() ) ); // [MeV/c] 2nd binomial
                         gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
                         double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (t.E*t.E);
@@ -1052,10 +1032,8 @@ int main( int argc, char* argv[] )
             } // while steps
 
             std::cout << std::endl;
-
-            Ekprev = 9e9; // update flag for next delta
-
         } // while deltas
+
         /*
         write( 69, * ) "ev " << iev << ncl << meh // event header
 
