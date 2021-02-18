@@ -1466,11 +1466,11 @@ std::stack<double> shells( double energy_gamma)
     double PV[5];
 
     int is = -1;
-    if( energy_gamma <= Eshel[1] )
-    is = 0;
-    else if( energy_gamma <= EPP[3] )
-    is = 1;
-    else {
+    if( energy_gamma <= Eshel[1] ) {
+        is = 0;
+    } else if( energy_gamma <= EPP[3] ) {
+        is = 1;
+    } else {
         if( energy_gamma > EPP[nep] ) {
             PV[1] = PM[nep];
             PV[2] = PL23[nep];
@@ -1479,8 +1479,11 @@ std::stack<double> shells( double energy_gamma)
         }
         else {
             unsigned iep = 3;
-            for( ; iep < nep; ++iep )
-            if( energy_gamma > EPP[iep] && energy_gamma <= EPP[iep+1] ) break;
+            for( ; iep < nep; ++iep ) {
+                if( energy_gamma > EPP[iep] && energy_gamma <= EPP[iep+1] ) {
+                    break;
+                }
+            }
 
             // interpolate:
 
@@ -1500,10 +1503,14 @@ std::stack<double> shells( double energy_gamma)
         unsigned iv = 1;
         for( ; iv <= 4; ++iv ) {
             PV[iv] = PV[iv]/PPV; // normalize
-            if( PV[iv] > rs ) break;
+            if( PV[iv] > rs ) {
+                break;
+            }
         }
         is = iv;
-        if( is > 4 ) is = 4;
+        if( is > 4 ) {
+            is = 4;
+        }
     }
 
     //cout << "  shells for " << energy_gamma << " eV, Ev " << Ev << ", is " << is << std::endl;
@@ -1516,7 +1523,9 @@ std::stack<double> shells( double energy_gamma)
 
         double rv = unirnd(rgen);
         double Ee = energy_gamma;
-        if( Ee < 0.1 ) return veh;
+        if( Ee < 0.1 ) {
+            return veh;
+        }
         if( Ee < Ev ) {
             veh.push( rv*Ee );
             veh.push( (1-rv)*Ee );
@@ -1547,16 +1556,17 @@ std::stack<double> shells( double energy_gamma)
     double raug = unirnd(rgen);
 
     int ks = 1;
-    if( is <= 1 )
-    ks = 1;
-    else if( is <= 3 ) {
+    if( is <= 1 ) {
         ks = 1;
-        if( raug > augmi[is][1] ) ks = 2;
-    }
-    else {
-        if( raug < augmi[is][1] )
+    } else if( is <= 3 ) {
         ks = 1;
-        else {
+        if( raug > augmi[is][1] ) {
+            ks = 2;
+        }
+    } else {
+        if( raug < augmi[is][1] ) {
+            ks = 1;
+        } else {
             for( int js = 2; js <= nvac[is]; ++js )
             if( raug >= augmi[is][js-1] && raug < augmi[is][js] )
             ks = js;
@@ -1567,8 +1577,9 @@ std::stack<double> shells( double energy_gamma)
 
         // L23-SHELL VACANCIES
 
-        if( ks == 1 )
-        transition_l23_m_m( Ev, veh );
+        if( ks == 1 ) {
+            transition_l23_m_m( Ev, veh );
+        }
 
     }
     else if( is == 3 ) {
@@ -1582,13 +1593,16 @@ std::stack<double> shells( double energy_gamma)
             veh.push( augde[is][ks] - rv*Ev );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] )
-            kks = 2;
-            if( kks == 1 )
-            transition_l23_m_m( Ev, veh );
+            if( unirnd(rgen) > augmi[2][1] ) {
+                kks = 2;
+            }
+            if( kks == 1 ) {
+                transition_l23_m_m( Ev, veh );
+            }
         }
-        else
-        transition_l1_m_m( Ev, veh );
+        else {
+            transition_l1_m_m( Ev, veh );
+        }
 
     } // is 3
 
@@ -1624,9 +1638,13 @@ std::stack<double> shells( double energy_gamma)
             veh.push( rEv );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) kks = 2;
-            if( kks == 1 )
-            transition_l23_m_m( Ev, veh );
+            if( unirnd(rgen) > augmi[2][1] ) {
+                kks = 2;
+            }
+
+            if( kks == 1 ) {
+                transition_l23_m_m( Ev, veh );
+            }
 
         }
         else if( ks == 4 || ks == 5 ) {
@@ -1638,11 +1656,13 @@ std::stack<double> shells( double energy_gamma)
             veh.push( rEv );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[3][1] )
-            kks = 2;
+            if( unirnd(rgen) > augmi[3][1] ) {
+                kks = 2;
+            }
 
-            if( kks == 1 )
-            transition_l1_m_m( Ev, veh );
+            if( kks == 1 ) {
+                transition_l1_m_m( Ev, veh );
+            }
 
             else {
 
@@ -1653,10 +1673,12 @@ std::stack<double> shells( double energy_gamma)
                 veh.push( augde[3][kks] - rEv );
 
                 unsigned kks = 1;
-                if( unirnd(rgen) > augmi[2][1] )
-                kks = 2;
-                if( kks == 1 )
-                transition_l23_m_m( Ev, veh );
+                if( unirnd(rgen) > augmi[2][1] ) {
+                    kks = 2;
+                }
+                if( kks == 1 ) {
+                    transition_l23_m_m( Ev, veh );
+                }
 
             }
         }
@@ -1667,14 +1689,20 @@ std::stack<double> shells( double energy_gamma)
             veh.push( augde[is][ks] ); // default
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) kks = 2;
-            if( kks == 1 )
-            transition_l23_m_m( Ev, veh );
+            if( unirnd(rgen) > augmi[2][1] ) {
+                kks = 2;
+            }
+            if( kks == 1 ) {
+                transition_l23_m_m( Ev, veh );
+            }
 
             kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) kks = 2;
-            if( kks == 1 )
-            transition_l23_m_m( Ev, veh );
+            if( unirnd(rgen) > augmi[2][1] ) {
+                kks = 2;
+            }
+            if( kks == 1 ) {
+                transition_l23_m_m( Ev, veh );
+            }
 
         }
         else if( ks == 2 ) {
@@ -1684,9 +1712,12 @@ std::stack<double> shells( double energy_gamma)
             // TRANSITION K L1 L23
             // L23-SHELL VACANCIES
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) kks = 2;
-            if( kks == 1 )
-            transition_l23_m_m( Ev, veh );
+            if( unirnd(rgen) > augmi[2][1] ) {
+                kks = 2;
+            }
+            if( kks == 1 ) {
+                transition_l23_m_m( Ev, veh );
+            }
 
             // L1-SHELL VACANCIES
             kks = 1;
@@ -1702,8 +1733,9 @@ std::stack<double> shells( double energy_gamma)
                 if( kks == 1 )
                 transition_l23_m_m( Ev, veh );
             }
-            else
-            transition_l1_m_m( Ev, veh );
+            else {
+                transition_l1_m_m( Ev, veh );
+            }
         }
         else if( ks == 1 ) {
 
@@ -1726,8 +1758,9 @@ std::stack<double> shells( double energy_gamma)
                 if( kks == 1 )
                 transition_l23_m_m( Ev, veh );
             }
-            else
-            transition_l1_m_m( Ev, veh );
+            else {
+                transition_l1_m_m( Ev, veh );
+            }
 
             // L1-SHELL VACANCIES
             kks = 1;
@@ -1746,8 +1779,9 @@ std::stack<double> shells( double energy_gamma)
                 if( kks == 1 )
                 transition_l23_m_m( Ev, veh );
             }
-            else
-            transition_l1_m_m( Ev, veh );
+            else {
+                transition_l1_m_m( Ev, veh );
+            }
 
         } // ks
 
