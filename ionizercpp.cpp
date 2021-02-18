@@ -108,7 +108,7 @@ void transition(double energy_valence, double energy_auger, std::stack <double> 
 // global variables: (initialized in main, used in shells)
 
 const unsigned lsh = 5;
-double Eshel[lsh], auger_prob_integral[lsh][10], auger_energy[lsh][10];
+double energy_shell[lsh], auger_prob_integral[lsh][10], auger_energy[lsh][10];
 int nvac[lsh];
 
 const unsigned lep = 14;
@@ -508,10 +508,10 @@ int main( int argc, char* argv[] )
     nvac[3] = 2;
     nvac[4] = 9; // possible transitions to it
 
-    Eshel[1] =   12.0; // valence band upper edge (holes live below)
-    Eshel[2] =   99.2; // M
-    Eshel[3] =  148.7; // L
-    Eshel[4] = 1839.0; // K
+    energy_shell[1] =   12.0; // valence band upper edge (holes live below)
+    energy_shell[2] =   99.2; // M
+    energy_shell[3] =  148.7; // L
+    energy_shell[4] = 1839.0; // K
 
     for( unsigned n = 1; n <= 4; ++n )
     for( unsigned i = 1; i <= 9; ++i ) {
@@ -1446,11 +1446,11 @@ std::stack<double> shells(double energy_gamma)
     //energy_gamma = energy_gamma - energy_gap; // double counting?
 
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
-    const double energy_valence = Eshel[1]; // 12.0 eV
+    const double energy_valence = energy_shell[1]; // 12.0 eV
 
 
     int is = -1;
-    if( energy_gamma <= Eshel[1] ) {
+    if( energy_gamma <= energy_shell[1] ) {
         is = 0;
     } else if( energy_gamma <= EPP[3] ) {
         is = 1;
@@ -1516,16 +1516,15 @@ std::stack<double> shells(double energy_gamma)
     }
 
     // PHOTOABSORPTION IN AN INNER SHELL
-    double Eth = Eshel[is];
-    double Ephe = energy_gamma - Eth;
-    if( Ephe <= 0 ) {
+    double Ephe = energy_gamma - energy_shell[is];
+    if(Ephe <= 0) {
         std::cout << "shells: photoelectron with negative energy "
-        << energy_gamma << ", shell " << is << " at " << Eth << " eV" << std::endl;
+        << energy_gamma << ", shell " << is << " at " << energy_shell[is] << " eV" << std::endl;
         return veh;
     }
 
     // PRIMARY PHOTOELECTRON:
-    veh.push( Ephe );
+    veh.push(Ephe);
 
     // AUGER ELECTRONS:
     double raug = unirnd(rgen);
