@@ -1553,11 +1553,8 @@ std::stack<double> shells(double energy_gamma)
             // TRANSITION L23 M M
             transition(energy_valence, auger_energy[2][1], veh);
         }
-    }
-    else if( is == 3 ) {
-
+    } else if( is == 3 ) {
         // L1-SHELL VACANCIES
-
         if( ks == 2 ) {
             // TRANSITION L1 L23 M
             double rv = unirnd(rgen);
@@ -1565,7 +1562,7 @@ std::stack<double> shells(double energy_gamma)
             veh.push( auger_energy[is][ks] - rv*energy_valence );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
+            if(unirnd(rgen) > auger_prob_integral[2][1]) {
                 kks = 2;
             }
             if( kks == 1 ) {
@@ -1577,21 +1574,13 @@ std::stack<double> shells(double energy_gamma)
             // TRANSITION L1 M M
             transition(energy_valence, auger_energy[3][1], veh);
         }
-
-    } // is 3
-
-    if( is == 4 ) {
-
+    } else if( is == 4 ) {
         // K-SHELL VACANCIES
-
         if( ks >= 8 ) {
             // TRANSITION K M M
             transition(energy_valence, auger_energy[is][ks], veh);
-        }
-        else if( ks == 6 || ks == 7 ) {
-
+        } else if( ks == 6 || ks == 7 ) {
             // TRANSITION K L23 M
-
             double rEv = energy_valence*unirnd(rgen);
             veh.push( auger_energy[is][ks] - rEv ); // adjust for energy conservation
             veh.push( rEv );
@@ -1605,11 +1594,8 @@ std::stack<double> shells(double energy_gamma)
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
-        }
-        else if( ks == 4 || ks == 5 ) {
-
+        } else if( ks == 4 || ks == 5 ) {
             // TRANSITION K L1 M
-
             double rEv = energy_valence*unirnd(rgen);
             veh.push( auger_energy[is][ks] - rEv ); // adjust for energy conservation
             veh.push( rEv );
@@ -1622,18 +1608,14 @@ std::stack<double> shells(double energy_gamma)
             if( kks == 1 ) {
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
-            }
-
-            else {
-
+            } else {
                 // TRANSITION L1 L23 M
-
                 double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
                 veh.push( auger_energy[3][kks] - rEv );
 
                 unsigned kks = 1;
-                if( unirnd(rgen) > auger_prob_integral[2][1] ) {
+                if(unirnd(rgen) > auger_prob_integral[2][1]) {
                     kks = 2;
                 }
                 if( kks == 1 ) {
@@ -1641,37 +1623,31 @@ std::stack<double> shells(double energy_gamma)
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
             }
-        }
-        else if( ks == 3 ) {
-
+        } else if(ks == 3) {
             // TRANSITION K L23 L23
-
             veh.push( auger_energy[is][ks] ); // default
 
             unsigned kks = 1;
-            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
+            if(unirnd(rgen) > auger_prob_integral[2][1]) {
                 kks = 2;
             }
-            if( kks == 1 ) {
+            if(kks == 1) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
 
             kks = 1;
-            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
+            if(unirnd(rgen) > auger_prob_integral[2][1]) {
                 kks = 2;
             }
-            if( kks == 1 ) {
+            if(kks == 1) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
-
-        }
-        else if( ks == 2 ) {
-
-            veh.push( auger_energy[is][ks] ); // default
-
+        } else if( ks == 2 ) {
             // TRANSITION K L1 L23
+            veh.push(auger_energy[is][ks]); // default
+
             // L23-SHELL VACANCIES
             unsigned kks = 1;
             if( unirnd(rgen) > auger_prob_integral[2][1] ) {
@@ -1684,7 +1660,9 @@ std::stack<double> shells(double energy_gamma)
 
             // L1-SHELL VACANCIES
             kks = 1;
-            if( unirnd(rgen) > auger_prob_integral[3][1] ) kks = 2;
+            if( unirnd(rgen) > auger_prob_integral[3][1] ) {
+                kks = 2;
+            }
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
                 double rEv = energy_valence*unirnd(rgen);
@@ -1692,7 +1670,9 @@ std::stack<double> shells(double energy_gamma)
                 veh.push( auger_energy[3][kks] - rEv );
 
                 kks = 1;
-                if( unirnd(rgen) > auger_prob_integral[2][1] ) kks = 2;
+                if( unirnd(rgen) > auger_prob_integral[2][1] ) {
+                    kks = 2;
+                }
                 if( kks == 1 ) {
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
@@ -1702,15 +1682,15 @@ std::stack<double> shells(double energy_gamma)
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             }
-        }
-        else if( ks == 1 ) {
-
-            veh.push( auger_energy[is][ks] ); // default
+        } else if( ks == 1 ) {
             // TRANSITION K L1 L1
-            // L1-SHELL VACANCIES
+            veh.push(auger_energy[is][ks]); // default
 
+            // L1-SHELL VACANCIES
             unsigned kks = 1;
-            if( unirnd(rgen) > auger_prob_integral[3][1] ) kks = 2;
+            if( unirnd(rgen) > auger_prob_integral[3][1] ) {
+                kks = 2;
+            }
 
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
@@ -1727,8 +1707,7 @@ std::stack<double> shells(double energy_gamma)
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
-            }
-            else {
+            } else {
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             }
@@ -1747,13 +1726,15 @@ std::stack<double> shells(double energy_gamma)
 
                 // L23-SHELL
                 kks = 1;
-                if( unirnd(rgen) > auger_prob_integral[2][1] ) kks = 2;
+                if( unirnd(rgen) > auger_prob_integral[2][1] ) {
+                    kks = 2;
+                }
+
                 if( kks == 1 ) {
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
-            }
-            else {
+            }else {
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             }
