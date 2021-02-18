@@ -103,7 +103,7 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]);
 double gena1();
 double gena2();
 double gentri();
-void shells( double energy_gamma, std::stack <double> &veh );
+std::stack <double> shells(double energy_gamma);
 void TRL1MM( double Ev, std::stack <double> &veh );
 void TRL23MM( double Ev, std::stack <double> &veh );
 
@@ -925,8 +925,9 @@ int main( int argc, char* argv[] )
 
                     std::stack <double> veh;
 
-                    if( energy_gamma > energy_threshold )
-                    shells( energy_gamma, veh );
+                    if( energy_gamma > energy_threshold ) {
+                        veh = shells( energy_gamma);
+                    }
 
                     hnprim.Fill( veh.size() );
 
@@ -1447,13 +1448,15 @@ double gentri() // -1..1
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void shells( double energy_gamma, std::stack <double> &veh )
+std::stack<double> shells( double energy_gamma)
 {
+
     // INPUT:
     // EG = VIRTUAL GAMMA ENERGY [eV]
 
     // OUTPUT:
     // veh ENERGIES OF PRIMARY e/h
+    std::stack<double> veh;
 
     //energy_gamma = energy_gamma - energy_gap; // double counting?
 
@@ -1513,7 +1516,7 @@ void shells( double energy_gamma, std::stack <double> &veh )
 
         double rv = unirnd(rgen);
         double Ee = energy_gamma;
-        if( Ee < 0.1 ) return;
+        if( Ee < 0.1 ) return veh;
         if( Ee < Ev ) {
             veh.push( rv*Ee );
             veh.push( (1-rv)*Ee );
@@ -1522,7 +1525,7 @@ void shells( double energy_gamma, std::stack <double> &veh )
             veh.push( rv*Ev );
             veh.push( Ee - rv*Ev );
         }
-        return;
+        return veh;
     }
 
     // PHOTOABSORPTION IN AN INNER SHELL
@@ -1532,7 +1535,7 @@ void shells( double energy_gamma, std::stack <double> &veh )
     if( Ephe <= 0 ) {
         std::cout << "shells: photoelectron with negative energy "
         << energy_gamma << ", shell " << is << " at " << Eth << " eV" << std::endl;
-        return;
+        return veh;
     }
 
     // PRIMARY PHOTOELECTRON:
@@ -1750,6 +1753,7 @@ void shells( double energy_gamma, std::stack <double> &veh )
 
     } // is 4
 
+    return veh;
 } // SHELLS
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
