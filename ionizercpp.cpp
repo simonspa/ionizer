@@ -100,6 +100,14 @@ public:
 };
 
 DepositionBichsel::DepositionBichsel() {
+    // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+    // SHELL INITIALIZATION
+
+    nvac[1] = 0;
+    nvac[2] = 2;
+    nvac[3] = 2;
+    nvac[4] = 9; // possible transitions to it
+
     energy_shell[1] =   12.0; // valence band upper edge (holes live below)
     energy_shell[2] =   99.2; // M
     energy_shell[3] =  148.7; // L
@@ -163,25 +171,6 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]);
 double gena1();
 double gena2();
 
-// global variables: (initialized in main, used in shells)
-
-const unsigned lsh = 5;
-int nvac[lsh];
-
-const unsigned lep = 14;
-const unsigned nep = lep-1;
-
-// EPP(I) = VALORI DI ENERGIA PER TABULARE LE PROBABILITA" DI
-// FOTOASSORBIMENTO NELLE VARIE SHELL
-// PM, PL23, PL1, PK = PROBABILITA" DI ASSORBIMENTO DA PARTE
-// DELLE SHELL M,L23,L1 E K
-
-// VALORI ESTRAPOLATI DA FRASER
-std::vector<double> EPP{0.0, 40.0, 50.0, 99.2, 99.2, 148.7, 148.7, 150.0, 300.0, 500.0, 1000.0, 1839.0, 1839.0, 2000.0};;
-std::vector<double> PM{0, 1.0, 1.0, 1.0, 0.03, 0.03, 0.02, 0.02, 0.02, 0.02, 0.03, 0.05, 0.0, 0.0};
-std::vector<double> PL23{0, 0.0, 0.0, 0.0, 0.97, 0.92, 0.88, 0.88, 0.83, 0.70, 0.55, 0.39, 0.0, 0.0};
-std::vector<double> PL1{0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.15, 0.28, 0.42, 0.56, 0.08, 0.08};
-std::vector<double> PK{0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.92, 0.92};
 
 std::ranlux24 rgen; // C++11 random number engine
 std::uniform_real_distribution <double> unirnd( 0, 1 );
@@ -557,13 +546,6 @@ int main( int argc, char* argv[] )
     double xkmn[200];
     read_emerctab(sig[6], xkmn);
 
-    // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-    // SHELL INITIALIZATION
-
-    nvac[1] = 0;
-    nvac[2] = 2;
-    nvac[3] = 2;
-    nvac[4] = 9; // possible transitions to it
 
     // EGAP = GAP ENERGY IN eV
     // EMIN = THRESHOLD ENERGY (ALIG ET AL., PRB22 (1980), 5565)
@@ -1452,7 +1434,6 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
     const double energy_valence = energy_shell[1]; // 12.0 eV
 
-
     int is = -1;
     if( energy_gamma <= energy_shell[1] ) {
         is = 0;
@@ -1460,14 +1441,14 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
         is = 1;
     } else {
         double PV[5];
-        if( energy_gamma > EPP[nep] ) {
-            PV[1] = PM[nep];
-            PV[2] = PL23[nep];
-            PV[3] = PL1[nep];
-            PV[4] = PK[nep];
+        if( energy_gamma > EPP[13] ) {
+            PV[1] = PM[13];
+            PV[2] = PL23[13];
+            PV[3] = PL1[13];
+            PV[4] = PK[13];
         } else {
             unsigned iep = 3;
-            for( ; iep < nep; ++iep ) {
+            for( ; iep < 13; ++iep ) {
                 if( energy_gamma > EPP[iep] && energy_gamma <= EPP[iep+1] ) {
                     break;
                 }
