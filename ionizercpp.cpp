@@ -62,7 +62,11 @@
 #include <TH2.h>
 #include <TProfile.h>
 
-struct delta {
+class delta {
+public:
+    delta(double energy, double pos_x, double pos_y, double pos_z, double dir_u, double dir_v, double dir_w, unsigned type) : E(energy), x(pos_x), y(pos_y), z(pos_z), u(dir_u), v(dir_v), w(dir_w), npm(type)
+    {};
+    delta() = default;
     double E; // [MeV]
     double x; // position
     double y;
@@ -73,7 +77,10 @@ struct delta {
     unsigned npm; // particle type
 };
 
-struct cluster {
+class cluster {
+public:
+    cluster() = default;
+    cluster(int eh_pairs, double pos_x, double pos_y, double pos_z, double energy) : neh(eh_pairs), x(pos_x), y(pos_y), z(pos_z), E(energy) {};
     int neh;
     double x; // position
     double y;
@@ -574,16 +581,11 @@ int main( int argc, char* argv[] )
 
         double xm = pitch * ( unirnd(rgen) - 0.5 ); // [mu] -p/2..p/2 at track mid
 
-        delta t;
-        t.E = Ekin0; // [MeV]
-        t.x = ( xm - 0.5*width ) * 1e-4; // entry point is left;
-        t.y = 0; // [cm]
-        t.z = 0; // pixel from 0 to depth [cm]
-        t.u = sin(turn);
-        t.v = 0;
-        t.w = cos(turn); // along z
-        t.npm = npm0;
-        deltas.push(t); // beam particle is first "delta"
+        deltas.emplace(Ekin0, (xm - 0.5*width) * 1e-4, 0, 0, sin(turn), 0, cos(turn), npm0); // beam particle is first "delta"
+        // E : Ekin0; // [MeV]
+        // x : entry point is left;
+        // y :  [cm]
+        // z :  pixel from 0 to depth [cm]
 
         unsigned it = 0;
         unsigned nscat = 0; // elastic
@@ -953,17 +955,9 @@ int main( int argc, char* argv[] )
                         if( Eeh > explicit_delta_energy_cut_keV*1e3 ) {
 
                             // put delta on std::stack:
-
-                            delta t;
-                            t.E = Eeh*1E-6; // Ekin [MeV]
-                            t.x = xx;
-                            t.y = yy;
-                            t.z = zz;
-                            t.u = uu;
-                            t.v = vv;
-                            t.w = ww;
-                            t.npm = 4; // e
-                            deltas.push(t);
+                            // E = Eeh*1E-6; // Ekin [MeV]
+                            // npm = 4; // e
+                            deltas.emplace(Eeh*1E-6, xx, yy, zz, uu, vv, ww, 4);
 
                             ++ndelta;
 
@@ -1023,14 +1017,8 @@ int main( int argc, char* argv[] )
 
                         hlogn.Fill( log(neh)/log10 );
 
-                        cluster c;
-
-                        c.neh = neh;
-                        c.x = xx;
-                        c.y = yy;
-                        c.z = zz;
-                        c.E = Eg; // [eV]
-                        clusters.push_back(c);
+                        clusters.emplace_back(neh, xx, yy, zz, Eg);
+                        // E = Eg; // [eV]
 
                     } // neh
 
