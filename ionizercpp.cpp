@@ -1781,49 +1781,34 @@ std::stack<double> shells( double energy_gamma)
 } // SHELLS
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void transition(double energy_valence, double energy_auger, std::stack <double> &veh) {
+
+    // AUGER ELECTRON
+    double rEv = ( 1 + gentri() ) * energy_valence; // 0..2*Ev
+    veh.push(energy_auger - rEv);
+
+    // ASSIGN ENERGIES TO THE HOLES
+    double energy_hole1 = 0, energy_hole2 = 0;
+    do {
+        double rv = unirnd(rgen);
+        energy_hole1 = rv * rEv;
+        energy_hole2 = (1 - rv) * rEv;
+    } while(energy_hole1 > energy_valence || energy_hole2 > energy_valence); // holes stay below valence band edge (12 eV)
+
+    veh.push(energy_hole1);
+    veh.push(energy_hole2);
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void transition_l1_m_m( double Ev, std::stack <double> &veh )
 {
     // TRANSITION L1 M M
-
-    // AUGER ELECTRON
-
-    double rEv = ( 1 + gentri() ) * Ev; // 0..2*Ev
-
-    veh.push( augde[3][1] - rEv );
-
-    // ASSIGN ENERGIES TO THE HOLES
-
-    double Eh1 = 0, Eh2 = 0;
-    do {
-        double rv = unirnd(rgen);
-        Eh1 = rv * rEv;
-        Eh2 = (1-rv) * rEv;
-    } while(Eh1 > Ev || Eh2 > Ev); // holes stay below valence band edge (12 eV)
-
-    veh.push( Eh1 );
-    veh.push( Eh2 );
-
+    transition(Ev, augde[3][1], veh);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void transition_l23_m_m( double Ev, std::stack <double> &veh )
 {
     // TRANSITION L23 M M
-
-    // AUGER ELECTRON
-
-    double rEv = ( 1 + gentri() ) * Ev; // 0..2*Ev
-
-    veh.push( augde[2][1] - rEv );
-
-    // ASSIGN ENERGIES TO THE HOLES
-    double Eh1 = 0, Eh2 = 0;
-    do {
-        double rv = unirnd(rgen);
-        Eh1 = rv * rEv;
-        Eh2 = (1-rv) * rEv;
-    } while(Eh1 > Ev || Eh2 > Ev); // holes stay below valence band edge (12 eV)
-
-    veh.push( Eh1 );
-    veh.push( Eh2 );
+    transition(Ev, augde[2][1], veh);
 }
