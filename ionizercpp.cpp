@@ -587,8 +587,6 @@ int main( int argc, char* argv[] )
             delta t = deltas.top();
             deltas.pop();
 
-            double Ek = t.E; // [MeV] kinetic energy
-            unsigned particle_type = t.type;
             unsigned nlast = nume;
 
             double xm0 = 1;
@@ -597,7 +595,7 @@ int main( int argc, char* argv[] )
             double totsig[lime];
             double ptm = t.ptm(); // e 0.51100 MeV
 
-            std::cout << "  delta " << Ek*1e3 << " keV"
+            std::cout << "  delta " << t.E*1e3 << " keV"
             << ", cost " << t.direction.Z()
             << ", u " << t.direction.X()
             << ", v " << t.direction.Y()
@@ -605,17 +603,19 @@ int main( int argc, char* argv[] )
 
             while(1) { // steps
 
-                if( Ek < 0.9 * Ekprev ) { // update
+                if( t.E < 0.9 * Ekprev ) { // update
 
                     double zi = 1.0;
 
-                    double gam = Ek / ptm + 1.0; // W = total energy / restmass
+                    double gam = t.E / ptm + 1.0; // W = total energy / restmass
                     double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma = p/m
                     double pmom = ptm*bg; // [MeV/c]
                     double betasq = bg*bg / ( 1 + bg*bg );
                     double Emax = ptm * ( gam*gam - 1 ) / ( 0.5*ptm/electron_mass_mev + 0.5*electron_mass_mev/ptm + gam );
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
-                    if( particle_type == 4 ) Emax = 0.5*Ek;
+                    if(t.type == 4) {
+                        Emax = 0.5*t.E;
+                    }
                     // std::maximum energy loss for incident electrons
                     Emax = 1e6 * Emax; // eV
 
@@ -624,7 +624,7 @@ int main( int argc, char* argv[] )
 
                     double dec = zi*zi * atnu * fac / betasq;
                     double bemx = betasq / Emax;
-                    double EkeV = Ek * 1e6; // [eV]
+                    double EkeV = t.E * 1e6; // [eV]
                     double twombb = 2 * electron_mass_ev * betasq; // [eV]
 
                     // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
@@ -678,11 +678,11 @@ int main( int argc, char* argv[] )
                         //if( E[j] > 1838 ) sig[2][j] = 0; // TEST, 7% better resolution
 
                         double uef = 1 - E[j] * bemx;
-                        if( particle_type == 4 )
-                        uef = 1 +
-                        pow( E[j] / ( EkeV - E[j] ), 2 ) +
-                        pow( (gam-1) / gam * E[j]/EkeV, 2 ) -
-                        ( 2*gam-1 ) * E[j] / ( gam*gam * ( EkeV - E[j] ) );
+                        if(t.type == 4) {
+                            uef = 1 + pow( E[j] / ( EkeV - E[j] ), 2 ) +
+                            pow( (gam-1) / gam * E[j]/EkeV, 2 ) -
+                            ( 2*gam-1 ) * E[j] / ( gam*gam * ( EkeV - E[j] ) );
+                        }
 
                         // uef from  Eqs. 9 & 2 in Uehling, Ann Rev Nucl Sci 4, 315 (1954)
                         // if( j == 1) PRINT*, " uef=",UEF
@@ -743,12 +743,12 @@ int main( int argc, char* argv[] )
 
                     // elastic:
 
-                    if( particle_type == 4 ) { // ELECTRONS
+                    if(t.type == 4) { // ELECTRONS
 
                         //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / EkeV; // Mazziotta
                         gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
-                        double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (Ek*Ek);
+                        double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (t.E*t.E);
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu*S0EL; // ATNU = N_A * density / A = atoms/cm3
@@ -756,18 +756,18 @@ int main( int argc, char* argv[] )
                     }
                     else { //  OTHER PARTICLES
 
-                        double getot = Ek + ptm;
+                        double getot = t.E + ptm;
                         xlel = std::min( 2232.0 * radiation_length * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radiation_length );
                         // units ?
                     }
 
-                    elvse.Fill( log(Ek)/log10, 1e4/xlel );
-                    invse.Fill( log(Ek)/log10, 1e4/xm0 );
+                    elvse.Fill( log(t.E)/log10, 1e4/xlel );
+                    invse.Fill( log(t.E)/log10, 1e4/xm0 );
 
-                    Ekprev = Ek;
+                    Ekprev = t.E;
 
                     if( ldb )
-                    std::cout << "  ev " << iev << " type " << particle_type << ", Ekin " << Ek*1e3 << " keV"
+                    std::cout << "  ev " << iev << " type " << t.type << ", Ekin " << t.E*1e3 << " keV"
                     << ", beta " << sqrt(betasq) << ", gam " << gam << std::endl
                     << "  Emax " << Emax << ", nlast " << nlast << ", Elast " << E[nlast]
                     << ", norm " << totsig[nlast] << std::endl
@@ -790,7 +790,7 @@ int main( int argc, char* argv[] )
 
                 double pos_z = t.position.Z() + xr * t.direction.Z();
 
-                if( ldb && Ek < 1 )
+                if( ldb && t.E < 1 )
                 std::cout << "step " << xr*1e4 << ", z " << pos_z*1e4 << std::endl;
 
                 hzz.Fill( pos_z*1e4 );
@@ -821,15 +821,15 @@ int main( int argc, char* argv[] )
                     hde2.Fill( energy_gamma*1e-3 );
                     hdel.Fill( log(energy_gamma)/log10 );
 
-                    double resekin = Ek - energy_gamma*1E-6; // [ MeV]
+                    double resekin = t.E - energy_gamma*1E-6; // [ MeV]
 
                     // cut off for further movement: [MeV]
 
                     if( resekin < explicit_delta_energy_cut_keV*1e-3 ) {
 
-                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << Ek*1e3 << energy_gamma*1e-3 << resekin*1e-3
-                        energy_gamma = Ek*1E6; // [eV]
-                        resekin = Ek - energy_gamma; // zero
+                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << t.E*1e3 << energy_gamma*1e-3 << resekin*1e-3
+                        energy_gamma = t.E*1E6; // [eV]
+                        resekin = t.E - energy_gamma; // zero
                         // std::cout << "LAST ENERGY LOSS" << energy_gamma << resekin
 
                     }
@@ -844,10 +844,10 @@ int main( int argc, char* argv[] )
                     // COST = SQRT(1.-SINT*SINT)
                     // STORE INFORMATION ABOUT DELTA-RAY:
                     // SINT = COST ! flip
-                    // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / Ek ) ! wrong
+                    // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / t.E ) ! wrong
 
                     //double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) ); // M. Swartz
-                    double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) * ( Ek + 2*electron_mass_ev*1e-6 ) / Ek );
+                    double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) * ( t.E + 2*electron_mass_ev*1e-6 ) / t.E );
                     // Penelope, Geant4
                     double sint;
                     if( cost*cost <= 1 )
@@ -992,27 +992,27 @@ int main( int argc, char* argv[] )
 
                     } // neh
 
-                    Ek -= energy_gamma*1E-6; // [MeV]
+                    t.E -= energy_gamma*1E-6; // [MeV]
 
-                    if( ldb && Ek < 1 )
-                    std::cout << "    Ek " << Ek*1e3
+                    if( ldb && t.E < 1 )
+                    std::cout << "    Ek " << t.E*1e3
                     << " keV, z " << t.position.Z()*1e4 << ", neh " << neh
                     << ", steps " << it << ", ion " << nloss << ", elas " << nscat
                     << ", cl " << clusters.size()
                     << std::endl;
 
-                    if( Ek < 1E-6 || resekin < 1E-6 ) {
+                    if( t.E < 1E-6 || resekin < 1E-6 ) {
                         // std::cout << "  absorbed" << std::endl;
                         break;
                     }
 
-                    if( particle_type == 4 ) { // electrons, update elastic cross section at new Ek
+                    if(t.type == 4) { // electrons, update elastic cross section at new t.E
 
-                        //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (Ek*1E6); // Mazziotta
-                        double pmom = sqrt( Ek * ( Ek + 2*ptm ) ); // [MeV/c] 2nd binomial
+                        //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E*1E6); // Mazziotta
+                        double pmom = sqrt( t.E * ( t.E + 2*ptm ) ); // [MeV/c] 2nd binomial
                         gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
                         double E2 = 14.4e-14; // [MeV*cm]
-                        double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (Ek*Ek);
+                        double FF = 0.5* M_PI * E2*E2 * atomic_number*atomic_number / (t.E*t.E);
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu*S0EL; // ATNU = N_A * density / A = atoms/cm3
