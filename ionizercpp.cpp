@@ -104,8 +104,8 @@ double gena1();
 double gena2();
 double gentri();
 std::stack <double> shells(double energy_gamma);
-void TRL1MM( double Ev, std::stack <double> &veh );
-void TRL23MM( double Ev, std::stack <double> &veh );
+void transition_l1_m_m(double Ev, std::stack <double> &veh);
+void transition_l23_m_m(double Ev, std::stack <double> &veh);
 
 // global variables: (initialized in main, used in shells)
 
@@ -1568,7 +1568,7 @@ std::stack<double> shells( double energy_gamma)
         // L23-SHELL VACANCIES
 
         if( ks == 1 )
-        TRL23MM( Ev, veh );
+        transition_l23_m_m( Ev, veh );
 
     }
     else if( is == 3 ) {
@@ -1585,10 +1585,10 @@ std::stack<double> shells( double energy_gamma)
             if( unirnd(rgen) > augmi[2][1] )
             kks = 2;
             if( kks == 1 )
-            TRL23MM( Ev, veh );
+            transition_l23_m_m( Ev, veh );
         }
         else
-        TRL1MM( Ev, veh );
+        transition_l1_m_m( Ev, veh );
 
     } // is 3
 
@@ -1626,7 +1626,7 @@ std::stack<double> shells( double energy_gamma)
             unsigned kks = 1;
             if( unirnd(rgen) > augmi[2][1] ) kks = 2;
             if( kks == 1 )
-            TRL23MM( Ev, veh );
+            transition_l23_m_m( Ev, veh );
 
         }
         else if( ks == 4 || ks == 5 ) {
@@ -1642,7 +1642,7 @@ std::stack<double> shells( double energy_gamma)
             kks = 2;
 
             if( kks == 1 )
-            TRL1MM( Ev, veh );
+            transition_l1_m_m( Ev, veh );
 
             else {
 
@@ -1656,7 +1656,7 @@ std::stack<double> shells( double energy_gamma)
                 if( unirnd(rgen) > augmi[2][1] )
                 kks = 2;
                 if( kks == 1 )
-                TRL23MM( Ev, veh );
+                transition_l23_m_m( Ev, veh );
 
             }
         }
@@ -1669,12 +1669,12 @@ std::stack<double> shells( double energy_gamma)
             unsigned kks = 1;
             if( unirnd(rgen) > augmi[2][1] ) kks = 2;
             if( kks == 1 )
-            TRL23MM( Ev, veh );
+            transition_l23_m_m( Ev, veh );
 
             kks = 1;
             if( unirnd(rgen) > augmi[2][1] ) kks = 2;
             if( kks == 1 )
-            TRL23MM( Ev, veh );
+            transition_l23_m_m( Ev, veh );
 
         }
         else if( ks == 2 ) {
@@ -1686,7 +1686,7 @@ std::stack<double> shells( double energy_gamma)
             unsigned kks = 1;
             if( unirnd(rgen) > augmi[2][1] ) kks = 2;
             if( kks == 1 )
-            TRL23MM( Ev, veh );
+            transition_l23_m_m( Ev, veh );
 
             // L1-SHELL VACANCIES
             kks = 1;
@@ -1700,10 +1700,10 @@ std::stack<double> shells( double energy_gamma)
                 kks = 1;
                 if( unirnd(rgen) > augmi[2][1] ) kks = 2;
                 if( kks == 1 )
-                TRL23MM( Ev, veh );
+                transition_l23_m_m( Ev, veh );
             }
             else
-            TRL1MM( Ev, veh );
+            transition_l1_m_m( Ev, veh );
         }
         else if( ks == 1 ) {
 
@@ -1724,10 +1724,10 @@ std::stack<double> shells( double energy_gamma)
                 kks = 1;
                 if( unirnd(rgen) > augmi[2][1] ) kks = 2;
                 if( kks == 1 )
-                TRL23MM( Ev, veh );
+                transition_l23_m_m( Ev, veh );
             }
             else
-            TRL1MM( Ev, veh );
+            transition_l1_m_m( Ev, veh );
 
             // L1-SHELL VACANCIES
             kks = 1;
@@ -1744,10 +1744,10 @@ std::stack<double> shells( double energy_gamma)
                 kks = 1;
                 if( unirnd(rgen) > augmi[2][1] ) kks = 2;
                 if( kks == 1 )
-                TRL23MM( Ev, veh );
+                transition_l23_m_m( Ev, veh );
             }
             else
-            TRL1MM( Ev, veh );
+            transition_l1_m_m( Ev, veh );
 
         } // ks
 
@@ -1757,7 +1757,7 @@ std::stack<double> shells( double energy_gamma)
 } // SHELLS
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void TRL1MM( double Ev, std::stack <double> &veh )
+void transition_l1_m_m( double Ev, std::stack <double> &veh )
 {
     // TRANSITION L1 M M
 
@@ -1779,10 +1779,10 @@ void TRL1MM( double Ev, std::stack <double> &veh )
     veh.push( Eh1 );
     veh.push( Eh2 );
 
-} // TRL1MM
+}
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void TRL23MM( double Ev, std::stack <double> &veh )
+void transition_l23_m_m( double Ev, std::stack <double> &veh )
 {
     // TRANSITION L23 M M
 
@@ -1802,4 +1802,4 @@ void TRL23MM( double Ev, std::stack <double> &veh )
 
     veh.push( Eh1 );
     veh.push( Eh2 );
-} // TRL23MM
+}
