@@ -1461,9 +1461,8 @@ std::stack<double> shells( double energy_gamma)
     //energy_gamma = energy_gamma - energy_gap; // double counting?
 
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
-    double Ev = Eshel[1]; // 12.0 eV
+    const double energy_valence = Eshel[1]; // 12.0 eV
 
-    double PV[5];
 
     int is = -1;
     if( energy_gamma <= Eshel[1] ) {
@@ -1471,13 +1470,13 @@ std::stack<double> shells( double energy_gamma)
     } else if( energy_gamma <= EPP[3] ) {
         is = 1;
     } else {
+        double PV[5];
         if( energy_gamma > EPP[nep] ) {
             PV[1] = PM[nep];
             PV[2] = PL23[nep];
             PV[3] = PL1[nep];
             PV[4] = PK[nep];
-        }
-        else {
+        } else {
             unsigned iep = 3;
             for( ; iep < nep; ++iep ) {
                 if( energy_gamma > EPP[iep] && energy_gamma <= EPP[iep+1] ) {
@@ -1486,7 +1485,6 @@ std::stack<double> shells( double energy_gamma)
             }
 
             // interpolate:
-
             PV[1] = PM[iep] + ( PM[iep+1] - PM[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
             PV[2] = PL23[iep] + ( PL23[iep+1] - PL23[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
             PV[3] = PL1[iep] + ( PL1[iep+1] - PL1[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
@@ -1501,44 +1499,38 @@ std::stack<double> shells( double energy_gamma)
 
         double rs = unirnd(rgen);
         unsigned iv = 1;
-        for( ; iv <= 4; ++iv ) {
+        for(; iv <= 4; ++iv) {
             PV[iv] = PV[iv]/PPV; // normalize
-            if( PV[iv] > rs ) {
+            if(PV[iv] > rs) {
                 break;
             }
         }
-        is = iv;
-        if( is > 4 ) {
-            is = 4;
-        }
+        // Restrict to 4 maximum
+        is = std::min(iv, 4u);
     }
 
-    //cout << "  shells for " << energy_gamma << " eV, Ev " << Ev << ", is " << is << std::endl;
+    //cout << "  shells for " << energy_gamma << " eV, energy_valence " << energy_valence << ", is " << is << std::endl;
 
     // PROCESSES:
 
     // PHOTOABSORPTION IN VALENCE BAND
-
-    if( is <= 1 ) {
-
+    if(is <= 1) {
         double rv = unirnd(rgen);
-        double Ee = energy_gamma;
-        if( Ee < 0.1 ) {
+        if(energy_gamma < 0.1) {
             return veh;
         }
-        if( Ee < Ev ) {
-            veh.push( rv*Ee );
-            veh.push( (1-rv)*Ee );
+        if(energy_gamma < energy_valence) {
+            veh.push(rv * energy_gamma);
+            veh.push((1-rv) * energy_gamma);
         }
         else {
-            veh.push( rv*Ev );
-            veh.push( Ee - rv*Ev );
+            veh.push(rv * energy_valence);
+            veh.push(energy_gamma - rv * energy_valence);
         }
         return veh;
     }
 
     // PHOTOABSORPTION IN AN INNER SHELL
-
     double Eth = Eshel[is];
     double Ephe = energy_gamma - Eth;
     if( Ephe <= 0 ) {
@@ -1548,11 +1540,9 @@ std::stack<double> shells( double energy_gamma)
     }
 
     // PRIMARY PHOTOELECTRON:
-
     veh.push( Ephe );
 
-    // AUGR ELECTRONS:
-
+    // AUGER ELECTRONS:
     double raug = unirnd(rgen);
 
     int ks = 1;
@@ -1578,7 +1568,7 @@ std::stack<double> shells( double energy_gamma)
         // L23-SHELL VACANCIES
 
         if( ks == 1 ) {
-            transition_l23_m_m( Ev, veh );
+            transition_l23_m_m( energy_valence, veh );
         }
 
     }
@@ -1589,19 +1579,19 @@ std::stack<double> shells( double energy_gamma)
         if( ks == 2 ) {
             // TRANSITION L1 L23 M
             double rv = unirnd(rgen);
-            veh.push( rv*Ev );
-            veh.push( augde[is][ks] - rv*Ev );
+            veh.push( rv*energy_valence );
+            veh.push( augde[is][ks] - rv*energy_valence );
 
             unsigned kks = 1;
             if( unirnd(rgen) > augmi[2][1] ) {
                 kks = 2;
             }
             if( kks == 1 ) {
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
         }
         else {
-            transition_l1_m_m( Ev, veh );
+            transition_l1_m_m( energy_valence, veh );
         }
 
     } // is 3
@@ -1615,7 +1605,7 @@ std::stack<double> shells( double energy_gamma)
             // TRANSITION K M M
             double r = gentri(); // -1..1
             // HF1( 112, r )
-            double rEv = (1+r)*Ev; // 0..2*Ev
+            double rEv = (1+r)*energy_valence; // 0..2*energy_valence
             veh.push( augde[is][ks] - rEv ); // adjust for energy conservation
 
             double Eh1 = 0, Eh2 = 0;
@@ -1623,7 +1613,7 @@ std::stack<double> shells( double energy_gamma)
                 double rv = unirnd(rgen);
                 Eh1 = rv * rEv;
                 Eh2 = (1-rv) * rEv;
-            } while(Eh1 > Ev || Eh2 > Ev); // holes stay below valence band edge (12 eV)
+            } while(Eh1 > energy_valence || Eh2 > energy_valence); // holes stay below valence band edge (12 eV)
 
             veh.push( Eh1 );
             veh.push( Eh2 );
@@ -1633,7 +1623,7 @@ std::stack<double> shells( double energy_gamma)
 
             // TRANSITION K L23 M
 
-            double rEv = Ev*unirnd(rgen);
+            double rEv = energy_valence*unirnd(rgen);
             veh.push( augde[is][ks] - rEv ); // adjust for energy conservation
             veh.push( rEv );
 
@@ -1643,7 +1633,7 @@ std::stack<double> shells( double energy_gamma)
             }
 
             if( kks == 1 ) {
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
 
         }
@@ -1651,7 +1641,7 @@ std::stack<double> shells( double energy_gamma)
 
             // TRANSITION K L1 M
 
-            double rEv = Ev*unirnd(rgen);
+            double rEv = energy_valence*unirnd(rgen);
             veh.push( augde[is][ks] - rEv ); // adjust for energy conservation
             veh.push( rEv );
 
@@ -1661,14 +1651,14 @@ std::stack<double> shells( double energy_gamma)
             }
 
             if( kks == 1 ) {
-                transition_l1_m_m( Ev, veh );
+                transition_l1_m_m( energy_valence, veh );
             }
 
             else {
 
                 // TRANSITION L1 L23 M
 
-                double rEv = Ev*unirnd(rgen);
+                double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
                 veh.push( augde[3][kks] - rEv );
 
@@ -1677,7 +1667,7 @@ std::stack<double> shells( double energy_gamma)
                     kks = 2;
                 }
                 if( kks == 1 ) {
-                    transition_l23_m_m( Ev, veh );
+                    transition_l23_m_m( energy_valence, veh );
                 }
 
             }
@@ -1693,7 +1683,7 @@ std::stack<double> shells( double energy_gamma)
                 kks = 2;
             }
             if( kks == 1 ) {
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
 
             kks = 1;
@@ -1701,7 +1691,7 @@ std::stack<double> shells( double energy_gamma)
                 kks = 2;
             }
             if( kks == 1 ) {
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
 
         }
@@ -1716,7 +1706,7 @@ std::stack<double> shells( double energy_gamma)
                 kks = 2;
             }
             if( kks == 1 ) {
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
 
             // L1-SHELL VACANCIES
@@ -1724,17 +1714,17 @@ std::stack<double> shells( double energy_gamma)
             if( unirnd(rgen) > augmi[3][1] ) kks = 2;
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
-                double rEv = Ev*unirnd(rgen);
+                double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
                 veh.push( augde[3][kks] - rEv );
 
                 kks = 1;
                 if( unirnd(rgen) > augmi[2][1] ) kks = 2;
                 if( kks == 1 )
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
             else {
-                transition_l1_m_m( Ev, veh );
+                transition_l1_m_m( energy_valence, veh );
             }
         }
         else if( ks == 1 ) {
@@ -1748,7 +1738,7 @@ std::stack<double> shells( double energy_gamma)
 
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
-                double rEv = Ev*unirnd(rgen);
+                double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
                 veh.push( augde[3][kks] - rEv );
 
@@ -1756,10 +1746,10 @@ std::stack<double> shells( double energy_gamma)
                 kks = 1;
                 if( unirnd(rgen) > augmi[2][1] ) kks = 2;
                 if( kks == 1 )
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
             else {
-                transition_l1_m_m( Ev, veh );
+                transition_l1_m_m( energy_valence, veh );
             }
 
             // L1-SHELL VACANCIES
@@ -1769,7 +1759,7 @@ std::stack<double> shells( double energy_gamma)
 
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
-                double rEv = Ev*unirnd(rgen);
+                double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
                 veh.push( augde[3][kks] - rEv );
 
@@ -1777,10 +1767,10 @@ std::stack<double> shells( double energy_gamma)
                 kks = 1;
                 if( unirnd(rgen) > augmi[2][1] ) kks = 2;
                 if( kks == 1 )
-                transition_l23_m_m( Ev, veh );
+                transition_l23_m_m( energy_valence, veh );
             }
             else {
-                transition_l1_m_m( Ev, veh );
+                transition_l1_m_m( energy_valence, veh );
             }
 
         } // ks
