@@ -63,21 +63,19 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile.h>
+#include <Math/Point3D.h>
+#include <Math/Vector3D.h>
 
 using namespace ionizer;
 
 class delta {
 public:
-    delta(double energy, double pos_x, double pos_y, double pos_z, double dir_u, double dir_v, double dir_w, unsigned particle_type) : E(energy), x(pos_x), y(pos_y), z(pos_z), u(dir_u), v(dir_v), w(dir_w), type(particle_type)
+    delta(double energy, ROOT::Math::XYZPoint pos, ROOT::Math::XYZVector dir, unsigned particle_type) : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type)
     {};
     delta() = default;
     double E; // [MeV]
-    double x; // position
-    double y;
-    double z;
-    double u; // direction
-    double v;
-    double w;
+    ROOT::Math::XYZPoint position;
+    ROOT::Math::XYZVector direction;
     unsigned type; // particle type
     double ptm() {
         if(      type == 1 ) return 938.2723; // proton
@@ -571,8 +569,9 @@ int main( int argc, char* argv[] )
         // put track on std::stack:
 
         double xm = pitch * ( unirnd(rgen) - 0.5 ); // [mu] -p/2..p/2 at track mid
-
-        deltas.emplace(Ekin0, (xm - 0.5*width) * 1e-4, 0, 0, sin(turn), 0, cos(turn), default_particle_type); // beam particle is first "delta"
+        ROOT::Math::XYZPoint pos((xm - 0.5*width) * 1e-4, 0, 0);
+        ROOT::Math::XYZVector dir(sin(turn), 0, cos(turn));
+        deltas.emplace(Ekin0, pos, dir, default_particle_type); // beam particle is first "delta"
         // E : Ekin0; // [MeV]
         // x : entry point is left;
         // y :  [cm]
@@ -594,10 +593,10 @@ int main( int argc, char* argv[] )
             deltas.pop();
 
             double Ek = t.E; // [MeV] kinetic energy
-            double xx = t.x;
-            double yy = t.y;
-            double zz = t.z;
-            std::vector<double> vect{t.u, t.v, t.w}; // direction cosines
+            double xx = t.position.X();
+            double yy = t.position.Y();
+            double zz = t.position.Z();
+            std::vector<double> vect{t.direction.X(), t.direction.Y(), t.direction.Z()}; // direction cosines
             unsigned particle_type = t.type;
             unsigned nlast = nume;
 
@@ -608,9 +607,9 @@ int main( int argc, char* argv[] )
             double ptm = t.ptm(); // e 0.51100 MeV
 
             std::cout << "  delta " << Ek*1e3 << " keV"
-            << ", cost " << t.w
-            << ", u " << t.u
-            << ", v " << t.v
+            << ", cost " << t.direction.Z()
+            << ", u " << t.direction.X()
+            << ", v " << t.direction.Y()
             << ", z " << zz*1e4;
 
             while(1) { // steps
@@ -938,7 +937,7 @@ int main( int argc, char* argv[] )
                             // put delta on std::stack:
                             // E = Eeh*1E-6; // Ekin [MeV]
                             // particle_type = 4; // e
-                            deltas.emplace(Eeh*1E-6, xx, yy, zz, uu, vv, ww, 4);
+                            deltas.emplace(Eeh*1E-6, ROOT::Math::XYZPoint(xx, yy, zz), ROOT::Math::XYZVector(uu, vv, ww), 4);
 
                             ++ndelta;
 
