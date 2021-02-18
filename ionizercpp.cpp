@@ -108,7 +108,7 @@ void transition(double energy_valence, double energy_auger, std::stack <double> 
 // global variables: (initialized in main, used in shells)
 
 const unsigned lsh = 5;
-double Eshel[lsh], augmi[lsh][10], augde[lsh][10];
+double Eshel[lsh], auger_prob_integral[lsh][10], auger_energy[lsh][10];
 int nvac[lsh];
 
 const unsigned lep = 14;
@@ -515,51 +515,51 @@ int main( int argc, char* argv[] )
 
     for( unsigned n = 1; n <= 4; ++n )
     for( unsigned i = 1; i <= 9; ++i ) {
-        augmi[n][i] = 0;
-        augde[n][i] = 0;
+        auger_prob_integral[n][i] = 0;
+        auger_energy[n][i] = 0;
     }
 
-    // augmi(KSH,J) = PROBABILITA" INTEGRALI DEI VARI PROCESSI DI
+    // auger_prob_integral(KSH,J) = PROBABILITA" INTEGRALI DEI VARI PROCESSI DI
     // EMISSIONE AUGR DALLA SHELL KSH
 
-    // augmi(KSH,J) = 1 PER L"ULTIMO VALORE DI J
+    // auger_prob_integral(KSH,J) = 1 PER L"ULTIMO VALORE DI J
 
     // KSH = 4 --> SHELL K
     // KSH = 3 --> SHELL L1
     // KSH = 2 --> SHELL L23
 
-    augmi[4][1] = 0.1920;
-    augmi[4][2] = 0.3885 + augmi[4][1];
-    augmi[4][3] = 0.2325 + augmi[4][2];
-    augmi[4][4] = 0.0720 + augmi[4][3];
-    augmi[4][5] = 0.0030 + augmi[4][4];
-    augmi[4][6] = 0.1000 + augmi[4][5];
-    augmi[4][7] = 0.0040 + augmi[4][6];
-    augmi[4][8] = 0.0070 + augmi[4][7];
-    augmi[4][9] = 0.0010 + augmi[4][8];
-    augmi[3][1] = 0.0250;
-    augmi[3][2] = 0.9750 + augmi[3][1];
-    augmi[2][1] = 0.9990;
-    augmi[2][2] = 0.0010 + augmi[2][1];
+    auger_prob_integral[4][1] = 0.1920;
+    auger_prob_integral[4][2] = 0.3885 + auger_prob_integral[4][1];
+    auger_prob_integral[4][3] = 0.2325 + auger_prob_integral[4][2];
+    auger_prob_integral[4][4] = 0.0720 + auger_prob_integral[4][3];
+    auger_prob_integral[4][5] = 0.0030 + auger_prob_integral[4][4];
+    auger_prob_integral[4][6] = 0.1000 + auger_prob_integral[4][5];
+    auger_prob_integral[4][7] = 0.0040 + auger_prob_integral[4][6];
+    auger_prob_integral[4][8] = 0.0070 + auger_prob_integral[4][7];
+    auger_prob_integral[4][9] = 0.0010 + auger_prob_integral[4][8];
+    auger_prob_integral[3][1] = 0.0250;
+    auger_prob_integral[3][2] = 0.9750 + auger_prob_integral[3][1];
+    auger_prob_integral[2][1] = 0.9990;
+    auger_prob_integral[2][2] = 0.0010 + auger_prob_integral[2][1];
 
-    // augde[KSH, J) = ENERGIA IN eV DELL"ELETTRONE AUGR
+    // auger_energy[KSH, J) = ENERGIA IN eV DELL"ELETTRONE AUGR
     // EMESSO DALLA SHELL KSH NEL PROCESSO J
 
-    augde[4][1] = 1541.6;
-    augde[4][2] = 1591.1;
-    augde[4][3] = 1640.6;
-    augde[4][4] = 1690.3;
-    augde[4][5] = 1690.3;
-    augde[4][6] = 1739.8;
-    augde[4][7] = 1739.8;
-    augde[4][8] = 1839.0;
-    augde[4][9] = 1839.0;
+    auger_energy[4][1] = 1541.6;
+    auger_energy[4][2] = 1591.1;
+    auger_energy[4][3] = 1640.6;
+    auger_energy[4][4] = 1690.3;
+    auger_energy[4][5] = 1690.3;
+    auger_energy[4][6] = 1739.8;
+    auger_energy[4][7] = 1739.8;
+    auger_energy[4][8] = 1839.0;
+    auger_energy[4][9] = 1839.0;
 
-    augde[3][1] = 148.7;
-    augde[3][2] =  49.5;
+    auger_energy[3][1] = 148.7;
+    auger_energy[3][2] =  49.5;
 
-    augde[2][1] = 99.2;
-    augde[2][2] =  0.0;
+    auger_energy[2][1] = 99.2;
+    auger_energy[2][2] =  0.0;
 
 
     // EGAP = GAP ENERGY IN eV
@@ -1433,7 +1433,7 @@ double gena2()
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-std::stack<double> shells( double energy_gamma)
+std::stack<double> shells(double energy_gamma)
 {
 
     // INPUT:
@@ -1535,15 +1535,15 @@ std::stack<double> shells( double energy_gamma)
         ks = 1;
     } else if( is <= 3 ) {
         ks = 1;
-        if( raug > augmi[is][1] ) {
+        if( raug > auger_prob_integral[is][1] ) {
             ks = 2;
         }
     } else {
-        if( raug < augmi[is][1] ) {
+        if( raug < auger_prob_integral[is][1] ) {
             ks = 1;
         } else {
             for( int js = 2; js <= nvac[is]; ++js )
-            if( raug >= augmi[is][js-1] && raug < augmi[is][js] )
+            if( raug >= auger_prob_integral[is][js-1] && raug < auger_prob_integral[is][js] )
             ks = js;
         }
     }
@@ -1552,7 +1552,7 @@ std::stack<double> shells( double energy_gamma)
         // L23-SHELL VACANCIES
         if( ks == 1 ) {
             // TRANSITION L23 M M
-            transition(energy_valence, augde[2][1], veh);
+            transition(energy_valence, auger_energy[2][1], veh);
         }
     }
     else if( is == 3 ) {
@@ -1563,20 +1563,20 @@ std::stack<double> shells( double energy_gamma)
             // TRANSITION L1 L23 M
             double rv = unirnd(rgen);
             veh.push( rv*energy_valence );
-            veh.push( augde[is][ks] - rv*energy_valence );
+            veh.push( auger_energy[is][ks] - rv*energy_valence );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                 kks = 2;
             }
             if( kks == 1 ) {
                 // TRANSITION L23 M M
-                transition(energy_valence, augde[2][1], veh);
+                transition(energy_valence, auger_energy[2][1], veh);
             }
         }
         else {
             // TRANSITION L1 M M
-            transition(energy_valence, augde[3][1], veh);
+            transition(energy_valence, auger_energy[3][1], veh);
         }
 
     } // is 3
@@ -1587,24 +1587,24 @@ std::stack<double> shells( double energy_gamma)
 
         if( ks >= 8 ) {
             // TRANSITION K M M
-            transition(energy_valence, augde[is][ks], veh);
+            transition(energy_valence, auger_energy[is][ks], veh);
         }
         else if( ks == 6 || ks == 7 ) {
 
             // TRANSITION K L23 M
 
             double rEv = energy_valence*unirnd(rgen);
-            veh.push( augde[is][ks] - rEv ); // adjust for energy conservation
+            veh.push( auger_energy[is][ks] - rEv ); // adjust for energy conservation
             veh.push( rEv );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                 kks = 2;
             }
 
             if( kks == 1 ) {
                 // TRANSITION L23 M M
-                transition(energy_valence, augde[2][1], veh);
+                transition(energy_valence, auger_energy[2][1], veh);
             }
         }
         else if( ks == 4 || ks == 5 ) {
@@ -1612,17 +1612,17 @@ std::stack<double> shells( double energy_gamma)
             // TRANSITION K L1 M
 
             double rEv = energy_valence*unirnd(rgen);
-            veh.push( augde[is][ks] - rEv ); // adjust for energy conservation
+            veh.push( auger_energy[is][ks] - rEv ); // adjust for energy conservation
             veh.push( rEv );
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[3][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[3][1] ) {
                 kks = 2;
             }
 
             if( kks == 1 ) {
                 // TRANSITION L1 M M
-                transition(energy_valence, augde[3][1], veh);
+                transition(energy_valence, auger_energy[3][1], veh);
             }
 
             else {
@@ -1631,15 +1631,15 @@ std::stack<double> shells( double energy_gamma)
 
                 double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
-                veh.push( augde[3][kks] - rEv );
+                veh.push( auger_energy[3][kks] - rEv );
 
                 unsigned kks = 1;
-                if( unirnd(rgen) > augmi[2][1] ) {
+                if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                     kks = 2;
                 }
                 if( kks == 1 ) {
                     // TRANSITION L23 M M
-                    transition(energy_valence, augde[2][1], veh);
+                    transition(energy_valence, auger_energy[2][1], veh);
                 }
             }
         }
@@ -1647,96 +1647,96 @@ std::stack<double> shells( double energy_gamma)
 
             // TRANSITION K L23 L23
 
-            veh.push( augde[is][ks] ); // default
+            veh.push( auger_energy[is][ks] ); // default
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                 kks = 2;
             }
             if( kks == 1 ) {
                 // TRANSITION L23 M M
-                transition(energy_valence, augde[2][1], veh);
+                transition(energy_valence, auger_energy[2][1], veh);
             }
 
             kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                 kks = 2;
             }
             if( kks == 1 ) {
                 // TRANSITION L23 M M
-                transition(energy_valence, augde[2][1], veh);
+                transition(energy_valence, auger_energy[2][1], veh);
             }
 
         }
         else if( ks == 2 ) {
 
-            veh.push( augde[is][ks] ); // default
+            veh.push( auger_energy[is][ks] ); // default
 
             // TRANSITION K L1 L23
             // L23-SHELL VACANCIES
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[2][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                 kks = 2;
             }
             if( kks == 1 ) {
                 // TRANSITION L23 M M
-                transition(energy_valence, augde[2][1], veh);
+                transition(energy_valence, auger_energy[2][1], veh);
             }
 
             // L1-SHELL VACANCIES
             kks = 1;
-            if( unirnd(rgen) > augmi[3][1] ) kks = 2;
+            if( unirnd(rgen) > auger_prob_integral[3][1] ) kks = 2;
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
                 double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
-                veh.push( augde[3][kks] - rEv );
+                veh.push( auger_energy[3][kks] - rEv );
 
                 kks = 1;
-                if( unirnd(rgen) > augmi[2][1] ) kks = 2;
+                if( unirnd(rgen) > auger_prob_integral[2][1] ) kks = 2;
                 if( kks == 1 ) {
                     // TRANSITION L23 M M
-                    transition(energy_valence, augde[2][1], veh);
+                    transition(energy_valence, auger_energy[2][1], veh);
                 }
             }
             else {
                 // TRANSITION L1 M M
-                transition(energy_valence, augde[3][1], veh);
+                transition(energy_valence, auger_energy[3][1], veh);
             }
         }
         else if( ks == 1 ) {
 
-            veh.push( augde[is][ks] ); // default
+            veh.push( auger_energy[is][ks] ); // default
             // TRANSITION K L1 L1
             // L1-SHELL VACANCIES
 
             unsigned kks = 1;
-            if( unirnd(rgen) > augmi[3][1] ) kks = 2;
+            if( unirnd(rgen) > auger_prob_integral[3][1] ) kks = 2;
 
             if( kks == 2 ) {
                 // TRANSITION L1 L23 M
                 double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
-                veh.push( augde[3][kks] - rEv );
+                veh.push( auger_energy[3][kks] - rEv );
 
                 // L23-SHELL VACANCIES
                 kks = 1;
-                if( unirnd(rgen) > augmi[2][1] ) {
+                if( unirnd(rgen) > auger_prob_integral[2][1] ) {
                     kks = 2;
                 }
                 if( kks == 1 ) {
                     // TRANSITION L23 M M
-                    transition(energy_valence, augde[2][1], veh);
+                    transition(energy_valence, auger_energy[2][1], veh);
                 }
             }
             else {
                 // TRANSITION L1 M M
-                transition(energy_valence, augde[3][1], veh);
+                transition(energy_valence, auger_energy[3][1], veh);
             }
 
             // L1-SHELL VACANCIES
             kks = 1;
-            if( unirnd(rgen) > augmi[3][1] ) {
+            if( unirnd(rgen) > auger_prob_integral[3][1] ) {
                 kks = 2;
             }
 
@@ -1744,19 +1744,19 @@ std::stack<double> shells( double energy_gamma)
                 // TRANSITION L1 L23 M
                 double rEv = energy_valence*unirnd(rgen);
                 veh.push( rEv );
-                veh.push( augde[3][kks] - rEv );
+                veh.push( auger_energy[3][kks] - rEv );
 
                 // L23-SHELL
                 kks = 1;
-                if( unirnd(rgen) > augmi[2][1] ) kks = 2;
+                if( unirnd(rgen) > auger_prob_integral[2][1] ) kks = 2;
                 if( kks == 1 ) {
                     // TRANSITION L23 M M
-                    transition(energy_valence, augde[2][1], veh);
+                    transition(energy_valence, auger_energy[2][1], veh);
                 }
             }
             else {
                 // TRANSITION L1 M M
-                transition(energy_valence, augde[3][1], veh);
+                transition(energy_valence, auger_energy[3][1], veh);
             }
         } // ks
     } // is 4
