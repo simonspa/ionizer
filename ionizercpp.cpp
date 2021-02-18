@@ -105,8 +105,6 @@ double gena2();
 double gentri();
 std::stack <double> shells(double energy_gamma);
 void transition(double energy_valence, double energy_auger, std::stack <double> &veh);
-void transition_l1_m_m(double Ev, std::stack <double> &veh);
-void transition_l23_m_m(double Ev, std::stack <double> &veh);
 
 // global variables: (initialized in main, used in shells)
 
@@ -1591,7 +1589,8 @@ std::stack<double> shells( double energy_gamma)
             }
         }
         else {
-            transition_l1_m_m( energy_valence, veh );
+            // TRANSITION L1 M M
+            transition(energy_valence, augde[3][1], veh);
         }
 
     } // is 3
@@ -1618,9 +1617,9 @@ std::stack<double> shells( double energy_gamma)
             }
 
             if( kks == 1 ) {
-                transition_l23_m_m( energy_valence, veh );
+                // TRANSITION L23 M M
+                transition(energy_valence, augde[2][1], veh);
             }
-
         }
         else if( ks == 4 || ks == 5 ) {
 
@@ -1636,7 +1635,8 @@ std::stack<double> shells( double energy_gamma)
             }
 
             if( kks == 1 ) {
-                transition_l1_m_m( energy_valence, veh );
+                // TRANSITION L1 M M
+                transition(energy_valence, augde[3][1], veh);
             }
 
             else {
@@ -1714,7 +1714,8 @@ std::stack<double> shells( double energy_gamma)
                 }
             }
             else {
-                transition_l1_m_m( energy_valence, veh );
+                // TRANSITION L1 M M
+                transition(energy_valence, augde[3][1], veh);
             }
         }
         else if( ks == 1 ) {
@@ -1743,7 +1744,8 @@ std::stack<double> shells( double energy_gamma)
                 }
             }
             else {
-                transition_l1_m_m( energy_valence, veh );
+                // TRANSITION L1 M M
+                transition(energy_valence, augde[3][1], veh);
             }
 
             // L1-SHELL VACANCIES
@@ -1767,7 +1769,8 @@ std::stack<double> shells( double energy_gamma)
                 }
             }
             else {
-                transition_l1_m_m( energy_valence, veh );
+                // TRANSITION L1 M M
+                transition(energy_valence, augde[3][1], veh);
             }
 
         } // ks
@@ -1794,18 +1797,4 @@ void transition(double energy_valence, double energy_auger, std::stack <double> 
 
     veh.push(energy_hole1);
     veh.push(energy_hole2);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void transition_l1_m_m( double Ev, std::stack <double> &veh )
-{
-    // TRANSITION L1 M M
-    transition(Ev, augde[3][1], veh);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void transition_l23_m_m( double Ev, std::stack <double> &veh )
-{
-    // TRANSITION L23 M M
-    transition(Ev, augde[2][1], veh);
 }
