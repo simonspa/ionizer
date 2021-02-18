@@ -75,6 +75,13 @@ public:
     double v;
     double w;
     unsigned npm; // particle type
+    double ptm() {
+        if(      npm == 1 ) return 938.2723; // proton
+        else if( npm == 2 ) return 139.578; // pion
+        else if( npm == 3 ) return 493.67; // K
+        else if( npm == 5 ) return 105.65932; // mu
+        else return 0.51099906; // e mass [MeV]
+    };
 };
 
 class cluster {
@@ -617,7 +624,7 @@ int main( int argc, char* argv[] )
             double xlel = 1;
             double gn = 1;
             double totsig[lime];
-            double ptm = electron_mass_mev; // e 0.51100 MeV
+            double ptm = t.ptm(); // e 0.51100 MeV
 
             std::cout << "  delta " << Ek*1e3 << " keV"
             << ", cost " << t.w
@@ -630,11 +637,6 @@ int main( int argc, char* argv[] )
                 if( Ek < 0.9 * Ekprev ) { // update
 
                     double zi = 1.0;
-                    ptm = electron_mass_mev; // e 0.51100 MeV
-                    if(      npm == 1 ) ptm = 938.2723; // proton
-                    else if( npm == 2 ) ptm = 139.578; // pion
-                    else if( npm == 3 ) ptm = 493.67; // K
-                    else if( npm == 5 ) ptm = 105.65932; // mu
 
                     double gam = Ek / ptm + 1.0; // W = total energy / restmass
                     double bg  = sqrt( gam*gam - 1.0 ); // bg = beta*gamma = p/m
