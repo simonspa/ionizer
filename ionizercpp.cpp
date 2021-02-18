@@ -1556,9 +1556,9 @@ std::stack<double> shells(double energy_gamma)
         // L1-SHELL VACANCIES
         if( ks == 2 ) {
             // TRANSITION L1 L23 M
-            double rv = unirnd(rgen);
-            veh.push( rv*energy_valence );
-            veh.push( auger_energy[is][ks] - rv*energy_valence );
+            double energy = energy_valence * unirnd(rgen);
+            veh.push(energy);
+            veh.push(auger_energy[is][ks] - energy);
 
             if(unirnd(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
@@ -1575,9 +1575,9 @@ std::stack<double> shells(double energy_gamma)
             transition(energy_valence, auger_energy[is][ks], veh);
         } else if( ks == 6 || ks == 7 ) {
             // TRANSITION K L23 M
-            double rEv = energy_valence*unirnd(rgen);
-            veh.push( auger_energy[is][ks] - rEv ); // adjust for energy conservation
-            veh.push( rEv );
+            double energy = energy_valence * unirnd(rgen);
+            veh.push(energy);
+            veh.push(auger_energy[is][ks] - energy); // adjust for energy conservation
 
             if(unirnd(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
@@ -1585,18 +1585,18 @@ std::stack<double> shells(double energy_gamma)
             }
         } else if( ks == 4 || ks == 5 ) {
             // TRANSITION K L1 M
-            double rEv = energy_valence*unirnd(rgen);
-            veh.push( auger_energy[is][ks] - rEv ); // adjust for energy conservation
-            veh.push( rEv );
+            double energy = energy_valence * unirnd(rgen);
+            veh.push(energy);
+            veh.push(auger_energy[is][ks] - energy); // adjust for energy conservation
 
             if(unirnd(rgen) <= auger_prob_integral[3][1]) {
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             } else {
                 // TRANSITION L1 L23 M
-                double rEv = energy_valence*unirnd(rgen);
-                veh.push( rEv );
-                veh.push( auger_energy[3][2] - rEv );
+                double energy = energy_valence * unirnd(rgen);
+                veh.push(energy);
+                veh.push(auger_energy[3][2] - energy);
 
                 if(unirnd(rgen) <= auger_prob_integral[2][1]) {
                     // TRANSITION L23 M M
@@ -1605,7 +1605,7 @@ std::stack<double> shells(double energy_gamma)
             }
         } else if(ks == 3) {
             // TRANSITION K L23 L23
-            veh.push( auger_energy[is][ks] ); // default
+            veh.push(auger_energy[is][ks]); // default
 
             if(unirnd(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
@@ -1629,9 +1629,9 @@ std::stack<double> shells(double energy_gamma)
             // L1-SHELL VACANCIES
             if(unirnd(rgen) > auger_prob_integral[3][1]) {
                 // TRANSITION L1 L23 M
-                double rEv = energy_valence*unirnd(rgen);
-                veh.push( rEv );
-                veh.push( auger_energy[3][2] - rEv );
+                double energy = energy_valence * unirnd(rgen);
+                veh.push(energy);
+                veh.push(auger_energy[3][2] - energy);
 
                 if(unirnd(rgen) <= auger_prob_integral[2][1]) {
                     // TRANSITION L23 M M
@@ -1648,9 +1648,9 @@ std::stack<double> shells(double energy_gamma)
             // L1-SHELL VACANCIES
             if(unirnd(rgen) > auger_prob_integral[3][1]) {
                 // TRANSITION L1 L23 M
-                double rEv = energy_valence*unirnd(rgen);
-                veh.push( rEv );
-                veh.push( auger_energy[3][2] - rEv );
+                double energy = energy_valence * unirnd(rgen);
+                veh.push(energy);
+                veh.push(auger_energy[3][2] - energy);
 
                 // L23-SHELL VACANCIES
                 if(unirnd(rgen) <= auger_prob_integral[2][1]) {
@@ -1665,9 +1665,9 @@ std::stack<double> shells(double energy_gamma)
             // L1-SHELL VACANCIES
             if(unirnd(rgen) > auger_prob_integral[3][1]) {
                 // TRANSITION L1 L23 M
-                double rEv = energy_valence*unirnd(rgen);
-                veh.push( rEv );
-                veh.push( auger_energy[3][2] - rEv );
+                double energy = energy_valence * unirnd(rgen);
+                veh.push(energy);
+                veh.push(auger_energy[3][2] - energy);
 
                 // L23-SHELL
                 if(unirnd(rgen) <= auger_prob_integral[2][1]) {
