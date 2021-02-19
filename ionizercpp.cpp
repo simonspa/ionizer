@@ -576,40 +576,42 @@ int main(int argc, char* argv[]) {
                 // step:
 
                 double tlam = 1 / (xm0 + xlel); // [cm] TOTAL MEAN FREE PATH (MFP)
-
                 double step = -log(1 - unirnd(rgen)) * tlam; // exponential step length
-
-                hstep5.Fill(step * 1e4);
-                hstep0.Fill(step * 1e4);
-
                 double pos_z = t.position().Z() + step * t.direction().Z();
 
-                if(ldb && t.E() < 1)
+                if(ldb && t.E() < 1) {
                     std::cout << "step " << step * 1e4 << ", z " << pos_z * 1e4 << std::endl;
-
+                }
+                hstep5.Fill(step * 1e4);
+                hstep0.Fill(step * 1e4);
                 hzz.Fill(pos_z * 1e4);
 
+                // Outside the sensor
                 if(pos_z < 0 || pos_z > depth * 1e-4) {
                     break; // exit back or front
                 }
 
+                // Update position after step
                 t.setPosition(t.position() + step * t.direction());
 
-                if(fabs(t.position().Y()) > 0.0200)
+                if(fabs(t.position().Y()) > 0.0200) {
                     break; // save time
+                }
 
                 ++nsteps;
 
-                if(unirnd(rgen) > tlam * xlel) { // INELASTIC (ionization) PROCESS
-
+                // INELASTIC (ionization) PROCESS
+                if(unirnd(rgen) > tlam * xlel) {
                     ++nloss;
 
                     // GENERATE VIRTUAL GAMMA:
                     double yr = unirnd(rgen); // inversion method
                     unsigned je = 2;
-                    for(; je <= nlast; ++je)
-                        if(yr < totsig[je])
+                    for(; je <= nlast; ++je) {
+                        if(yr < totsig[je]) {
                             break;
+                        }
+                    }
 
                     double energy_gamma = E[je - 1] + (E[je] - E[je - 1]) * unirnd(rgen); // [eV]
 
@@ -618,17 +620,15 @@ int main(int argc, char* argv[]) {
                     hde2.Fill(energy_gamma * 1e-3);
                     hdel.Fill(log(energy_gamma) / log(10));
 
-                    double resekin = t.E() - energy_gamma * 1E-6; // [ MeV]
+                    double residual_kin_energy = t.E() - energy_gamma * 1E-6; // [ MeV]
 
                     // cut off for further movement: [MeV]
-                    if(resekin < explicit_delta_energy_cut_keV * 1e-3) {
-                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << t.E()*1e3 << energy_gamma*1e-3 << resekin*1e-3
+                    if(residual_kin_energy < explicit_delta_energy_cut_keV * 1e-3) {
                         energy_gamma = t.E() * 1E6;     // [eV]
-                        resekin = t.E() - energy_gamma; // zero
-                        // std::cout << "LAST ENERGY LOSS" << energy_gamma << resekin
+                        residual_kin_energy = t.E() - energy_gamma; // zero
+                        // std::cout << "LAST ENERGY LOSS" << energy_gamma << residual_kin_energy
                     }
 
-                    // if( energy_gamma < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
                     total_energy_loss += energy_gamma; // [eV]
 
                     // emission angle from delta:
@@ -644,12 +644,9 @@ int main(int argc, char* argv[]) {
                     double cost = sqrt(energy_gamma / (2 * electron_mass_ev + energy_gamma) *
                                        (t.E() + 2 * electron_mass_ev * 1e-6) / t.E());
                     // Penelope, Geant4
-                    double sint;
+                    double sint = 0;
                     if(cost * cost <= 1) {
                         sint = sqrt(1 - cost * cost); // mostly 90 deg
-                    } else {
-                        std::cout << " NAN 1-cost " << 1 - cost << ", 1-cost^2 " << 1 - cost * cost << std::endl;
-                        sint = 0;
                     }
                     double phi = 2 * M_PI * unirnd(rgen);
 
@@ -681,10 +678,8 @@ int main(int argc, char* argv[]) {
                     double cz = t.direction().Z(); // delta direction
                     double sz = sqrt(1 - cz * cz);
                     double phif = atan2(t.direction().Y(), t.direction().X());
-                    double sf = sin(phif);
-                    double cf = cos(phif);
-                    ROOT::Math::XYZVector delta_direction(cz * cf * din[0] - sf * din[1] + sz * cf * din[2],
-                                                          cz * sf * din[0] + cf * din[1] + sz * sf * din[2],
+                    ROOT::Math::XYZVector delta_direction(cz * cos(phif) * din[0] - sin(phif) * din[1] + sz * cos(phif) * din[2],
+                                                          cz * sin(phif) * din[0] + cos(phif) * din[1] + sz * sin(phif) * din[2],
                                                           -sz * din[0] + cz * din[2]);
 
                     // GENERATE PRIMARY e-h:
@@ -695,63 +690,52 @@ int main(int argc, char* argv[]) {
 
                     hnprim.Fill(veh.size());
 
-                    // process e and h
                     double sumEeh{0};
                     unsigned neh{0};
 
+                    // PROCESS e and h
                     while(!veh.empty()) {
-
                         double Eeh = veh.top();
                         veh.pop();
 
                         hlogE.Fill(Eeh > 1 ? log(Eeh) / log(10) : 0);
 
                         if(Eeh > explicit_delta_energy_cut_keV * 1e3) {
-
-                            // put delta on std::stack:
-                            // E = Eeh*1E-6; // Ekin [MeV]
-                            // particle_type = 4; // e
+                            // Put new delta on std::stack:
                             deltas.emplace(Eeh * 1E-6, t.position(), delta_direction, ParticleType::ELECTRON);
 
                             ++ndelta;
-
                             total_energy_loss -= Eeh; // [eV], avoid double counting
 
                             continue; // next ieh
-
                         } // new delta
 
                         sumEeh += Eeh;
 
                         // slow down low energy e and h: 95% of CPU time
-
-                        while(fast == 0 && Eeh > energy_threshold) {
-
-                            double pion =
-                                1 / (1 + aaa * 105 / 2 / M_PI * sqrt(Eeh - eom0) / pow(Eeh - energy_threshold, 3.5));
+                        while(!fast && Eeh > energy_threshold) {
                             // for e and h
+                            double p_ionization =
+                                1 / (1 + aaa * 105 / 2 / M_PI * sqrt(Eeh - eom0) / pow(Eeh - energy_threshold, 3.5));
 
-                            if(unirnd(rgen) < pion) { // ionization
-
+                            if(unirnd(rgen) < p_ionization) { // ionization
                                 ++neh;
-
                                 double E1 = gena1(&rgen) * (Eeh - energy_threshold);
                                 double E2 = gena2(&rgen) * (Eeh - energy_threshold - E1);
-
                                 // cout << "      ion " << Eeh << " => " << E1 << " + " << E2 << std::endl;
 
-                                if(E1 > energy_threshold)
+                                if(E1 > energy_threshold) {
                                     veh.push(E1);
-                                if(E2 > energy_threshold)
+                                }
+                                if(E2 > energy_threshold) {
                                     veh.push(E2);
+                                }
 
                                 Eeh = Eeh - E1 - E2 - energy_threshold;
-                            } else
-                                Eeh = Eeh - eom0; // phonon emission
-                            // std::cout << "      fon " << ed
-
+                            } else {
+                                Eeh -= eom0; // phonon emission
+                            }
                         } // slow: while Eeh
-
                     } // while veh
 
                     if(fast) {
@@ -764,31 +748,29 @@ int main(int argc, char* argv[]) {
 
                     // cout << "  dE " << energy_gamma << " eV, neh " << neh << std::endl;
 
-                    // store charge cluster:
-
+                    // Store charge cluster:
                     if(neh > 0) {
+                        clusters.emplace_back(neh, t.position(), energy_gamma);
 
                         hlogn.Fill(log(neh) / log(10));
+                    }
 
-                        clusters.emplace_back(neh, t.position(), energy_gamma);
-                        // E = energy_gamma; // [eV]
-
-                    } // neh
-
+                    // Update particle energy
                     t.setE(t.E() - energy_gamma * 1E-6); // [MeV]
 
-                    if(ldb && t.E() < 1)
+                    if(ldb && t.E() < 1) {
                         std::cout << "    Ek " << t.E() * 1e3 << " keV, z " << t.position().Z() * 1e4 << ", neh " << neh
                                   << ", steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", cl "
                                   << clusters.size() << std::endl;
+                    }
 
-                    if(t.E() < 1E-6 || resekin < 1E-6) {
+                    if(t.E() < 1E-6 || residual_kin_energy < 1E-6) {
                         // std::cout << "  absorbed" << std::endl;
                         break;
                     }
 
-                    if(t.type() == ParticleType::ELECTRON) { // electrons, update elastic cross section at new t.E()
-
+                    // For electrons, update elastic cross section at new energy
+                    if(t.type() == ParticleType::ELECTRON) {
                         // gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E()*1E6); // Mazziotta
                         double pmom = sqrt(t.E() * (t.E() + 2 * t.mass()));                   // [MeV/c] 2nd binomial
                         gn = 2 * 2.61 * pow(atomic_number, 2.0 / 3.0) / (pmom * pmom) * 1e-6; // Moliere
@@ -800,49 +782,30 @@ int main(int argc, char* argv[]) {
                     }
 
                 } else { // ELASTIC SCATTERING: Chaoui 2006
-
                     ++nscat;
 
                     double r = unirnd(rgen);
                     double cost = 1 - 2 * gn * r / (2 + gn - 2 * r);
                     double sint = sqrt(1 - cost * cost);
-
                     double phi = 2 * M_PI * unirnd(rgen);
-
-                    std::vector<double> din(3);
-                    din[0] = sint * cos(phi);
-                    din[1] = sint * sin(phi);
-                    din[2] = cost;
+                    std::vector<double> din{sint * cos(phi), sint * sin(phi), cost};
 
                     hscat.Fill(180 / M_PI * asin(sint)); // forward peak, tail to 90
 
-                    // change direction of delta VECT:
-
+                    // Change direction of particle:
                     double cz = t.direction().Z(); // delta direction
                     double sz = sqrt(1.0 - cz * cz);
                     double phif = atan2(t.direction().Y(), t.direction().X());
-                    double sf = sin(phif);
-                    double cf = cos(phif);
-                    t.setDirection(ROOT::Math::XYZVector(cz * cf * din[0] - sf * din[1] + sz * cf * din[2],
-                                                         cz * sf * din[0] + cf * din[1] + sz * sf * din[2],
+                    t.setDirection(ROOT::Math::XYZVector(cz * cos(phif) * din[0] - sin(phif) * din[1] + sz * cos(phif) * din[2],
+                                                         cz * sin(phif) * din[0] + cos(phif) * din[1] + sz * sin(phif) * din[2],
                                                          -sz * din[0] + cz * din[2]));
                 } // elastic
-
             } // while steps
 
             std::cout << std::endl;
         } // while deltas
 
-        /*
-        write( 69, * ) "ev " << iev << ncl << nehpairs // event header
 
-        do i = 1, ncl
-        write( 69, "( 3F7.1, x, f9.1, I6 )" )
-        vclu(i,1)*1e4 << vclu(i,2)*1e4 << vclu(i,3)*1e4 << // [mu]
-        vclu(i,4) << // [eV]
-        kclu(i)
-        enddo
-        */
 
         std::cout << "  steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", dE " << total_energy_loss * 1e-3
                   << " keV"
