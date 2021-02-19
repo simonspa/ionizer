@@ -77,6 +77,8 @@ double gena2(std::ranlux24* random_engine);
 #define PARTICLE_TYPE ParticleType::ELECTRON
 #define DEPTH 285
 #define EKIN 5000
+#define DELTA_ENERGY_CUT 9
+#define FAST true
 
 void DepositionBichsel::init() {
 
@@ -152,6 +154,8 @@ void DepositionBichsel::init() {
     energy_threshold = 1.5 * energy_gap; // energy conservation
     temperature = TEMPERATURE;
     default_particle_type = PARTICLE_TYPE;
+    explicit_delta_energy_cut_keV = DELTA_ENERGY_CUT;
+    fast = FAST;
 }
 
 std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned iev, double depth, unsigned& ndelta) {

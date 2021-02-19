@@ -153,10 +153,9 @@ namespace ionizer {
         std::array<ionizer::table, 6> sig;
 
         // FIXME possible config parameters
-        const bool fast = 1; // default is fast
+        bool fast;
         // delta ray range: 1 um at 10 keV (Mazziotta 2004)
-        // double explicit_delta_energy_cut_keV = 2; Dec 2019
-        const double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
+        double explicit_delta_energy_cut_keV;
         ParticleType default_particle_type;
         double temperature; // [K]
 
