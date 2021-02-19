@@ -61,13 +61,17 @@ namespace ionizer {
         double E; // [eV] generating particle
     };
 
-    class DepositionBichsel {
+    class MazziottaIonizer {
     public:
-        DepositionBichsel();
+        MazziottaIonizer(std::ranlux24* random_engine);
         std::stack <double> shells(double energy_gamma);
 
     private:
         void transition(double energy_valence, double energy_auger, std::stack <double> &veh);
+
+        std::ranlux24* random_engine_{nullptr};
+        std::uniform_real_distribution <double> uniform_dist{0, 1};
+        double get_uniform_prn();
 
         // Shells
         // Possible transitions to this shell:
