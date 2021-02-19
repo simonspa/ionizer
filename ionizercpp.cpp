@@ -69,10 +69,6 @@
 using namespace ionizer;
 
 // forward declarations:
-void read_hepstab(int n2, ionizer::table E, ionizer::table& ep_1, ionizer::table& ep_2, ionizer::table& dfdE);
-void read_macomtab(int n2, unsigned int nume, ionizer::table& sig);
-void read_emerctab(ionizer::table& sig, ionizer::table& xkmn);
-
 double gena1(std::ranlux24* random_engine);
 double gena2(std::ranlux24* random_engine);
 
@@ -357,7 +353,7 @@ int main(int argc, char* argv[]) {
         dE[j - 1] = E[j] - E[j - 1];
     }
 
-    std::cout << std::endl << "  n2 " << n2 << ", Emin " << Emin << ", um " << um << ", E[nume] " << E.back() << std::endl;
+    std::cout << std::endl << "  n2 " << N2 << ", Emin " << Emin << ", um " << um << ", E[nume] " << E.back() << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ DIELECTRIC CONSTANTS
@@ -365,14 +361,14 @@ int main(int argc, char* argv[]) {
     ionizer::table dielectric_const_real;
     ionizer::table dielectric_const_imag;
     ionizer::table dfdE;
-    read_hepstab(n2, E, dielectric_const_real, dielectric_const_imag, dfdE);
+    read_hepstab(N2, E, dielectric_const_real, dielectric_const_imag, dfdE);
 
     //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
 
     std::array<ionizer::table, 6> sig;
     ionizer::table oscillator_strength_ae;
-    read_macomtab(n2, E.size() - 1, oscillator_strength_ae);
+    read_macomtab(N2, E.size() - 1, oscillator_strength_ae);
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
@@ -1042,7 +1038,7 @@ int main(int argc, char* argv[]) {
 
 } // main
 
-void read_hepstab(int n2, ionizer::table E, ionizer::table& ep_1, ionizer::table& ep_2, ionizer::table& dfdE) {
+void ionizer::read_hepstab(int n2, ionizer::table E, ionizer::table& ep_1, ionizer::table& ep_2, ionizer::table& dfdE) {
     std::ifstream heps("HEPS.TAB");
     if(heps.bad() || !heps.is_open()) {
         std::cout << "Error opening HEPS.TAB" << std::endl;
@@ -1068,11 +1064,6 @@ void read_hepstab(int n2, ionizer::table E, ionizer::table& ep_1, ionizer::table
         numt = E.size() - 1;
     }
 
-    // HEPS.TAB is the table of the dielectric constant for solid Si,
-    // epsilon = ep(1,j) + i*ep(2,j), as a function of energy loss E(j),
-    // section II.E in RMP, and rim is Im(-1/epsilon), Eq. (2.17), p.668.
-    // Print statements are included to check that the file is read correctly.
-
     unsigned jt = 1;
     while(!heps.eof() && jt < numt) {
         getline(heps, line);
@@ -1093,7 +1084,7 @@ void read_hepstab(int n2, ionizer::table E, ionizer::table& ep_1, ionizer::table
     // DP: fixed in HEPS.TAB
 }
 
-void read_macomtab(int n2, unsigned int nume, ionizer::table& sig) {
+void ionizer::read_macomtab(int n2, unsigned int nume, ionizer::table& sig) {
     std::ifstream macom("MACOM.TAB");
     if(macom.bad() || !macom.is_open()) {
         std::cout << "Error opening MACOM.TAB" << std::endl;
@@ -1116,10 +1107,6 @@ void read_macomtab(int n2, unsigned int nume, ionizer::table& sig) {
     if(numt > nume)
         numt = nume;
 
-    // MACOM.TAB is the table of the integrals over momentum transfer K of the
-    // generalized oscillator strength, summed for all shells, i.e. the A(E)
-    // of Eq. (2.11), p. 667 of RMP
-
     unsigned jt = 1;
     while(!macom.eof() && jt < numt) {
         getline(macom, line);
@@ -1131,7 +1118,7 @@ void read_macomtab(int n2, unsigned int nume, ionizer::table& sig) {
     std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
 }
 
-void read_emerctab(ionizer::table& sig, ionizer::table& xkmn) {
+void ionizer::read_emerctab(ionizer::table& sig, ionizer::table& xkmn) {
     std::ifstream emerc("EMERC.TAB");
     if(emerc.bad() || !emerc.is_open()) {
         std::cout << "Error opening EMERC.TAB" << std::endl;
@@ -1145,10 +1132,6 @@ void read_emerctab(ionizer::table& sig, ionizer::table& xkmn) {
     getline(emerc, line);
 
     std::istringstream tokenizer(line);
-
-    // EMERC.TAB is the table of the integral over K of generalized oscillator
-    // strength for E < 11.9 eV with Im(-1/epsilon) from equations in the Appendix
-    // of Emerson et al., Phys Rev B7, 1798 (1973) (also see CCS-63)
 
     unsigned jt = 1;
     while(!emerc.eof() && jt < 200) {
