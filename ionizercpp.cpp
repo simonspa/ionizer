@@ -404,15 +404,17 @@ int main(int argc, char* argv[]) {
         // y :  [cm]
         // z :  pixel from 0 to depth [cm]
 
-        unsigned it = 0;
-        unsigned nscat = 0; // elastic
-        unsigned nloss = 0; // ionization
-        unsigned ndelta = 0;
-        double tde = 0.0;
-        unsigned meh = 0;
-        unsigned sumeh2 = 0;
-        std::vector<cluster> clusters;
 
+        // Statistics:
+        unsigned nsteps = 0; // number of steps for full event
+        unsigned nscat = 0; // elastic scattering
+        unsigned nloss = 0; // ionization
+        unsigned ndelta = 0; // number of deltas generated
+        double total_energy_loss = 0.0;
+        unsigned nehpairs = 0;
+        unsigned sumeh2 = 0;
+
+        std::vector<cluster> clusters;
         while(!deltas.empty()) {
             double Ekprev = 9e9; // update flag for next delta
 
@@ -426,105 +428,90 @@ int main(int argc, char* argv[]) {
             double gn = 1;
             ionizer::table totsig;
 
-            std::cout << "  delta " << t.E * 1e3 << " keV"
+            std::cout << "  delta " << t.E() * 1e3 << " keV"
                       << ", cost " << t.direction.Z() << ", u " << t.direction.X() << ", v " << t.direction.Y() << ", z "
                       << t.position.Z() * 1e4;
 
             while(1) { // steps
 
-                if(t.E < 0.9 * Ekprev) { // update
+                if(t.E() < 0.9 * Ekprev) { // update
 
-                    double zi = 1.0;
+                    // Emax = maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
+                    double Emax = t.mass() * (t.gamma() * t.gamma() - 1) /
+                                  (0.5 * t.mass() / electron_mass_mev + 0.5 * electron_mass_mev / t.mass() + t.gamma());
 
-                    double gam = t.E / t.mass() + 1.0; // W = total energy / restmass
-                    double bg = sqrt(gam * gam - 1.0); // bg = beta*gamma = p/m
-                    double pmom = t.mass() * bg;       // [MeV/c]
-                    double betasq = bg * bg / (1 + bg * bg);
-                    double Emax = t.mass() * (gam * gam - 1) /
-                                  (0.5 * t.mass() / electron_mass_mev + 0.5 * electron_mass_mev / t.mass() + gam);
-                    // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
-                    if(t.type == ParticleType::ELECTRON) {
-                        Emax = 0.5 * t.E;
+                    // maximum energy loss for incident electrons
+                    if(t.type() == ParticleType::ELECTRON) {
+                        Emax = 0.5 * t.E();
                     }
-                    // std::maximum energy loss for incident electrons
                     Emax = 1e6 * Emax; // eV
 
                     // Define parameters and calculate Inokuti"s sums,
                     // S ect 3.3 in Rev Mod Phys 43, 297 (1971)
 
-                    double dec = zi * zi * atnu * fac / betasq;
-                    double bemx = betasq / Emax;
-                    double EkeV = t.E * 1e6;                       // [eV]
-                    double twombb = 2 * electron_mass_ev * betasq; // [eV]
+                    double zi = 1.0;
+                    double dec = zi * zi * atnu * fac / t.betasquared();
+                    double EkeV = t.E() * 1e6;                       // [eV]
 
                     // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
                     // sig(*,j) actually is E**2 * sigma(E)
 
                     std::array<double, 6> tsig;
                     tsig.fill(0);
-
-                    double stpw = 0;
                     ionizer::table H;
+
+                    // Statistics:
+                    double stpw = 0;
 
                     for(unsigned j = 1; j < E.size(); ++j) {
 
-                        if(E[j] > Emax)
+                        if(E[j] > Emax) {
                             break;
+                        }
 
-                        double Q1 = rydberg_constant;
 
                         // Eq. (3.1) in RMP and red notebook CCS-33, 39 & 47
-
-                        if(E[j] < 100.0)
-                            Q1 = pow(0.025, 2) * rydberg_constant;
-                        if(E[j] < 11.9)
+                        double Q1 = rydberg_constant;
+                        if(E[j] < 11.9) {
                             Q1 = pow(xkmn[j], 2) * rydberg_constant;
+                        } else if(E[j] < 100.0) {
+                            Q1 = pow(0.025, 2) * rydberg_constant;
+                        }
 
-                        double qmin = E[j] * E[j] / twombb; // twombb = 2 m beta**2 [eV]
-
-                        if(E[j] < 11.9 && Q1 < qmin)
+                        double qmin = E[j] * E[j] / (2 * electron_mass_ev * t.betasquared()); // twombb = 2 m beta**2 [eV]
+                        if(E[j] < 11.9 && Q1 < qmin) {
                             sig[1][j] = 0;
-                        else
+                        } else {
                             sig[1][j] = E[j] * dfdE[j] * log(Q1 / qmin);
+                        }
                         // longitudinal excitation, Eq. (46) in Fano; Eq. (2.9) in RMP
 
-                        double epbe = 1 - betasq * dielectric_const_real[j]; // Fano Eq. (47)
-                        if(epbe < 1e-20)
-                            epbe = 1E-20;
+                        double epbe = std::max(1 - t.betasquared() * dielectric_const_real[j], 1e-20); // Fano Eq. (47)
+                        double sgg = E[j] * dfdE[j] * (-0.5) * log(epbe * epbe + pow(t.betasquared() * dielectric_const_imag[j], 2));
 
-                        double sgg = E[j] * dfdE[j] * (-0.5) * log(epbe * epbe + pow(betasq * dielectric_const_imag[j], 2));
-
-                        double thet = atan(dielectric_const_imag[j] * betasq / epbe);
-                        if(thet < 0)
+                        double thet = atan(dielectric_const_imag[j] * t.betasquared() / epbe);
+                        if(thet < 0) {
                             thet = thet + M_PI; // plausible-otherwise I"d have a jump
+                        }
                         // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
 
                         double sgh = 0.0092456 * E[j] * E[j] * thet *
-                                     (betasq - dielectric_const_real[j] /
+                                     (t.betasquared() - dielectric_const_real[j] /
                                                    (pow(dielectric_const_real[j], 2) + pow(dielectric_const_imag[j], 2)));
 
                         sig[2][j] = sgg;
                         sig[3][j] = sgh; // small, negative
 
-                        // sig[2][j] = 0; // TEST, worse resolution: more fluctuations
-                        // sig[2][j] *= 2; // TEST, better resolution: less fluctuations
-                        // if( E[j] > 1838 ) sig[2][j] = 0; // TEST, 7% better resolution
-
-                        double uef = 1 - E[j] * bemx;
-                        if(t.type == ParticleType::ELECTRON) {
-                            uef = 1 + pow(E[j] / (EkeV - E[j]), 2) + pow((gam - 1) / gam * E[j] / EkeV, 2) -
-                                  (2 * gam - 1) * E[j] / (gam * gam * (EkeV - E[j]));
-                        }
-
                         // uef from  Eqs. 9 & 2 in Uehling, Ann Rev Nucl Sci 4, 315 (1954)
-                        // if( j == 1) PRINT*, " uef=",UEF
-
+                        double uef = 1 - E[j] * t.betasquared() / Emax;
+                        if(t.type() == ParticleType::ELECTRON) {
+                            uef = 1 + pow(E[j] / (EkeV - E[j]), 2) + pow((t.gamma() - 1) / t.gamma() * E[j] / EkeV, 2) -
+                                  (2 * t.gamma() - 1) * E[j] / (t.gamma() * t.gamma() * (EkeV - E[j]));
+                        }
+                        // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
                         sig[4][j] = 2 * oscillator_strength_ae[j] * uef;
 
-                        // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
-
                         sig[5][j] = 0;
-
                         for(unsigned i = 1; i <= 4; ++i) {
                             sig[5][j] += sig[i][j]; // sum
 
@@ -532,7 +519,6 @@ int main(int argc, char* argv[]) {
                             // Tsig = integrated total collision cross section
                             tsig[i] = tsig[i] + sig[i][j] * dE[j] / (E[j] * E[j]);
                         } // i
-
                         tsig[5] += sig[5][j] * dE[j] / (E[j] * E[j]); // running sum
 
                         double HE2 = sig[5][j] * dec;
@@ -540,53 +526,51 @@ int main(int argc, char* argv[]) {
                         stpw += H[j] * E[j] * dE[j]; // dE/dx
                         nlast = j;
                     } // j
-
                     xm0 = tsig[5] * dec; // 1/path
 
-                    totsig[1] = H[1] * dE[1];  // running integral
+                    // Statistics:
                     double sst = H[1] * dE[1]; // total cross section (integral)
+
+                    totsig[1] = H[1] * dE[1];  // running integral
                     for(unsigned j = 2; j <= nlast; ++j) {
                         totsig[j] = totsig[j - 1] + H[j] * dE[j];
                         sst += H[j] * dE[j];
                     }
 
                     // NORMALIZE running integral:
-
-                    for(unsigned j = 1; j <= nlast; ++j)
+                    for(unsigned j = 1; j <= nlast; ++j) {
                         totsig[j] /= totsig[nlast]; // norm
+                    }
 
                     // elastic:
-
-                    if(t.type == ParticleType::ELECTRON) { // ELECTRONS
-
+                    if(t.type() == ParticleType::ELECTRON) {
                         // gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / EkeV; // Mazziotta
-                        gn = 2 * 2.61 * pow(atomic_number, 2.0 / 3.0) / (pmom * pmom) * 1e-6; // Moliere
+                        gn = 2 * 2.61 * pow(atomic_number, 2.0 / 3.0) / (t.momentum() * t.momentum()) * 1e-6; // Moliere
                         double E2 = 14.4e-14;                                                 // [MeV*cm]
-                        double FF = 0.5 * M_PI * E2 * E2 * atomic_number * atomic_number / (t.E * t.E);
+                        double FF = 0.5 * M_PI * E2 * E2 * atomic_number * atomic_number / (t.E() * t.E());
                         double S0EL = 2 * FF / (gn * (2 + gn));
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu * S0EL; // ATNU = N_A * density / A = atoms/cm3
-                    } else {                //  OTHER PARTICLES
-                        double getot = t.E + t.mass();
-                        xlel = std::min(2232.0 * radiation_length * pow(pmom * pmom / (getot * zi), 2),
+                    } else {
+                        double getot = t.E() + t.mass();
+                        xlel = std::min(2232.0 * radiation_length * pow(t.momentum() * t.momentum() / (getot * zi), 2),
                                         10.0 * radiation_length);
                         // units ?
                     }
 
-                    elvse.Fill(log(t.E) / log(10), 1e4 / xlel);
-                    invse.Fill(log(t.E) / log(10), 1e4 / xm0);
+                    elvse.Fill(log(t.E()) / log(10), 1e4 / xlel);
+                    invse.Fill(log(t.E()) / log(10), 1e4 / xm0);
 
-                    Ekprev = t.E;
+                    Ekprev = t.E();
 
                     if(ldb)
-                        std::cout << "  ev " << iev << " type " << t.type << ", Ekin " << t.E * 1e3 << " keV"
-                                  << ", beta " << sqrt(betasq) << ", gam " << gam << std::endl
+                        std::cout << "  ev " << iev << " type " << t.type() << ", Ekin " << t.E() * 1e3 << " keV"
+                                  << ", beta " << sqrt(t.betasquared()) << ", gam " << t.gamma() << std::endl
                                   << "  Emax " << Emax << ", nlast " << nlast << ", Elast " << E[nlast] << ", norm "
                                   << totsig[nlast] << std::endl
                                   << "  inelastic " << 1e4 / xm0 << "  " << 1e4 / sst << ", elastic " << 1e4 / xlel << " um"
                                   << ", mean dE " << stpw * depth * 1e-4 * 1e-3 << " keV" << std::endl
                                   << std::flush;
-
                 } // update
 
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -601,7 +585,7 @@ int main(int argc, char* argv[]) {
 
                 double pos_z = t.position.Z() + xr * t.direction.Z();
 
-                if(ldb && t.E < 1)
+                if(ldb && t.E() < 1)
                     std::cout << "step " << xr * 1e4 << ", z " << pos_z * 1e4 << std::endl;
 
                 hzz.Fill(pos_z * 1e4);
@@ -614,7 +598,7 @@ int main(int argc, char* argv[]) {
                 if(fabs(t.position.Y()) > 0.0200)
                     break; // save time
 
-                ++it;
+                ++nsteps;
 
                 if(unirnd(rgen) > tlam * xlel) { // INELASTIC (ionization) PROCESS
 
@@ -634,18 +618,18 @@ int main(int argc, char* argv[]) {
                     hde2.Fill(energy_gamma * 1e-3);
                     hdel.Fill(log(energy_gamma) / log(10));
 
-                    double resekin = t.E - energy_gamma * 1E-6; // [ MeV]
+                    double resekin = t.E() - energy_gamma * 1E-6; // [ MeV]
 
                     // cut off for further movement: [MeV]
                     if(resekin < explicit_delta_energy_cut_keV * 1e-3) {
-                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << t.E*1e3 << energy_gamma*1e-3 << resekin*1e-3
-                        energy_gamma = t.E * 1E6;     // [eV]
-                        resekin = t.E - energy_gamma; // zero
+                        // std::cout << "@@@ NEG RESIDUAL ENERGY" << t.E()*1e3 << energy_gamma*1e-3 << resekin*1e-3
+                        energy_gamma = t.E() * 1E6;     // [eV]
+                        resekin = t.E() - energy_gamma; // zero
                         // std::cout << "LAST ENERGY LOSS" << energy_gamma << resekin
                     }
 
                     // if( energy_gamma < explicit_delta_energy_cut_keV*1e3 ) // avoid double counting
-                    tde += energy_gamma; // [eV]
+                    total_energy_loss += energy_gamma; // [eV]
 
                     // emission angle from delta:
 
@@ -654,11 +638,11 @@ int main(int argc, char* argv[]) {
                     // COST = SQRT(1.-SINT*SINT)
                     // STORE INFORMATION ABOUT DELTA-RAY:
                     // SINT = COST ! flip
-                    // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / t.E ) ! wrong
+                    // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / t.E() ) ! wrong
 
                     // double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) ); // M. Swartz
                     double cost = sqrt(energy_gamma / (2 * electron_mass_ev + energy_gamma) *
-                                       (t.E + 2 * electron_mass_ev * 1e-6) / t.E);
+                                       (t.E() + 2 * electron_mass_ev * 1e-6) / t.E());
                     // Penelope, Geant4
                     double sint;
                     if(cost * cost <= 1) {
@@ -731,7 +715,7 @@ int main(int argc, char* argv[]) {
 
                             ++ndelta;
 
-                            tde -= Eeh; // [eV], avoid double counting
+                            total_energy_loss -= Eeh; // [eV], avoid double counting
 
                             continue; // next ieh
 
@@ -775,7 +759,7 @@ int main(int argc, char* argv[]) {
                         neh = poisson(rgen);
                     }
 
-                    meh += neh;
+                    nehpairs += neh;
                     sumeh2 += neh * neh;
 
                     // cout << "  dE " << energy_gamma << " eV, neh " << neh << std::endl;
@@ -791,25 +775,25 @@ int main(int argc, char* argv[]) {
 
                     } // neh
 
-                    t.E -= energy_gamma * 1E-6; // [MeV]
+                    t.setE(t.E() - energy_gamma * 1E-6); // [MeV]
 
-                    if(ldb && t.E < 1)
-                        std::cout << "    Ek " << t.E * 1e3 << " keV, z " << t.position.Z() * 1e4 << ", neh " << neh
-                                  << ", steps " << it << ", ion " << nloss << ", elas " << nscat << ", cl "
+                    if(ldb && t.E() < 1)
+                        std::cout << "    Ek " << t.E() * 1e3 << " keV, z " << t.position.Z() * 1e4 << ", neh " << neh
+                                  << ", steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", cl "
                                   << clusters.size() << std::endl;
 
-                    if(t.E < 1E-6 || resekin < 1E-6) {
+                    if(t.E() < 1E-6 || resekin < 1E-6) {
                         // std::cout << "  absorbed" << std::endl;
                         break;
                     }
 
-                    if(t.type == ParticleType::ELECTRON) { // electrons, update elastic cross section at new t.E
+                    if(t.type() == ParticleType::ELECTRON) { // electrons, update elastic cross section at new t.E()
 
-                        // gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E*1E6); // Mazziotta
-                        double pmom = sqrt(t.E * (t.E + 2 * t.mass()));                       // [MeV/c] 2nd binomial
+                        // gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E()*1E6); // Mazziotta
+                        double pmom = sqrt(t.E() * (t.E() + 2 * t.mass()));                       // [MeV/c] 2nd binomial
                         gn = 2 * 2.61 * pow(atomic_number, 2.0 / 3.0) / (pmom * pmom) * 1e-6; // Moliere
                         double E2 = 14.4e-14;                                                 // [MeV*cm]
-                        double FF = 0.5 * M_PI * E2 * E2 * atomic_number * atomic_number / (t.E * t.E);
+                        double FF = 0.5 * M_PI * E2 * E2 * atomic_number * atomic_number / (t.E() * t.E());
                         double S0EL = 2 * FF / (gn * (2 + gn));
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu * S0EL; // ATNU = N_A * density / A = atoms/cm3
@@ -850,7 +834,7 @@ int main(int argc, char* argv[]) {
         } // while deltas
 
         /*
-        write( 69, * ) "ev " << iev << ncl << meh // event header
+        write( 69, * ) "ev " << iev << ncl << nehpairs // event header
 
         do i = 1, ncl
         write( 69, "( 3F7.1, x, f9.1, I6 )" )
@@ -860,17 +844,17 @@ int main(int argc, char* argv[]) {
         enddo
         */
 
-        std::cout << "  steps " << it << ", ion " << nloss << ", elas " << nscat << ", dE " << tde * 1e-3 << " keV"
-                  << ", eh " << meh << ", cl " << clusters.size() << std::endl;
+        std::cout << "  steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", dE " << total_energy_loss * 1e-3 << " keV"
+                  << ", eh " << nehpairs << ", cl " << clusters.size() << std::endl;
 
         hncl.Fill(clusters.size());
-        htde.Fill(tde * 1e-3); // [keV] energy conservation - binding energy
+        htde.Fill(total_energy_loss * 1e-3); // [keV] energy conservation - binding energy
         if(ndelta)
-            htde1.Fill(tde * 1e-3); // [keV]
+            htde1.Fill(total_energy_loss * 1e-3); // [keV]
         else
-            htde0.Fill(tde * 1e-3); // [keV]
-        hteh.Fill(meh * 1e-3);      // [ke]
-        hq0.Fill(meh * 1e-3);       // [ke]
+            htde0.Fill(total_energy_loss * 1e-3); // [keV]
+        hteh.Fill(nehpairs * 1e-3);      // [ke]
+        hq0.Fill(nehpairs * 1e-3);       // [ke]
         hrms.Fill(sqrt(sumeh2));
 
         // 4 pixels along x:

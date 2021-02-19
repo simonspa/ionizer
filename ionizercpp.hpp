@@ -42,25 +42,56 @@ namespace ionizer {
          * @param dir           Direction of motion
          * @param particle_type Type of particle
          */
-        particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType particle_type)
-            : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type){};
+        particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType type)
+            : position(std::move(pos)), direction(std::move(dir)), energy_(energy), type_(type){
+                update();
+            };
 
         /**
          * Default constructor
          */
         particle() = default;
-        double E; // [MeV]
         ROOT::Math::XYZVector position;
         ROOT::Math::XYZVector direction;
-        ParticleType type; // particle type
 
+        double E() { return energy_; }
+        void setE(double energy) {
+            energy_ = energy;
+            update();
+        }
+        ParticleType type() { return type_; }
         /**
          * Helper to obtain particle rest mass in units of MeV
          * @return Particle rest mass in MeV
          */
-        double mass() { return mass_.at(static_cast<std::underlying_type<ParticleType>::type>(type)); };
+        double mass() { return mass_.at(static_cast<std::underlying_type<ParticleType>::type>(type_)); };
 
+        double gamma() {
+            return gamma_;
+        }
+
+        double betasquared() {
+            return betasquared_;
+        }
+
+        double momentum() {
+            return momentum_;
+        }
     private:
+        double energy_; // [MeV]
+        ParticleType type_; // particle type
+
+        void update() {
+            gamma_ = energy_ / mass() + 1.0; // W = total energy / restmass
+            double betagamma = sqrt(gamma_ * gamma_ - 1.0); // bg = beta*gamma = p/m
+            betasquared_ = betagamma * betagamma / (1 + betagamma * betagamma);
+            momentum_ = mass() * betagamma; // [MeV/c]
+        }
+
+        double gamma_{};
+        double betasquared_{};
+        double momentum_{};
+
         std::vector<double> mass_{
             0,
             938.2723,   // proton
