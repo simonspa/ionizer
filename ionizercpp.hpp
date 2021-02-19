@@ -150,8 +150,6 @@ namespace ionizer {
         ionizer::table oscillator_strength_ae;
         ionizer::table xkmn;
 
-        std::array<ionizer::table, 6> sig;
-
         // FIXME possible config parameters
         bool fast;
         // delta ray range: 1 um at 10 keV (Mazziotta 2004)
@@ -163,10 +161,9 @@ namespace ionizer {
         const bool ldb = false;
 
         // Constants
-        const double electron_mass_mev = 0.51099906;             // e mass [MeV]
-        const double electron_mass_ev = 1e6 * electron_mass_mev; // me [eV]
+        const double electron_mass = 0.51099906;             // e mass [MeV]
         const double rydberg_constant = 13.6056981;
-        const double fac = 8.0 * M_PI * rydberg_constant * rydberg_constant * pow(0.529177e-8, 2) / electron_mass_ev;
+        const double fac = 8.0 * M_PI * rydberg_constant * rydberg_constant * pow(0.529177e-8, 2) / electron_mass / 1e6;
 
         // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
         // silicon:

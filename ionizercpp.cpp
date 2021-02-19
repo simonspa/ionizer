@@ -197,7 +197,7 @@ std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned 
 
                 // Emax = maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
                 double Emax = t.mass() * (t.gamma() * t.gamma() - 1) /
-                              (0.5 * t.mass() / electron_mass_mev + 0.5 * electron_mass_mev / t.mass() + t.gamma());
+                              (0.5 * t.mass() / electron_mass + 0.5 * electron_mass / t.mass() + t.gamma());
 
                 // maximum energy loss for incident electrons
                 if(t.type() == ParticleType::ELECTRON) {
@@ -222,6 +222,7 @@ std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned 
                 // Statistics:
                 double stpw = 0;
 
+                std::array<ionizer::table, 6> sig;
                 for(unsigned j = 1; j < E.size(); ++j) {
 
                     if(E[j] > Emax) {
@@ -236,7 +237,7 @@ std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned 
                         Q1 = pow(0.025, 2) * rydberg_constant;
                     }
 
-                    double qmin = E[j] * E[j] / (2 * electron_mass_ev * t.betasquared()); // twombb = 2 m beta**2 [eV]
+                    double qmin = E[j] * E[j] / (2 * electron_mass * 1e6 * t.betasquared()); // twombb = 2 m beta**2 [eV]
                     if(E[j] < 11.9 && Q1 < qmin) {
                         sig[1][j] = 0;
                     } else {
@@ -284,7 +285,7 @@ std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned 
                     H[j] = HE2 / (E[j] * E[j]);
                     stpw += H[j] * E[j] * dE[j]; // dE/dx
                     nlast = j;
-                }                    // j
+                }
                 xm0 = tsig[5] * dec; // 1/path
 
                 // Statistics:
@@ -401,8 +402,8 @@ std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned 
                 // COST = SQRT(1.-SINT**2) ! sqrt( 1 - ER*1e-6 / t.E() ) ! wrong
 
                 // double cost = sqrt( energy_gamma / (2*electron_mass_ev + energy_gamma) ); // M. Swartz
-                double cost = sqrt(energy_gamma / (2 * electron_mass_ev + energy_gamma) *
-                                   (t.E() + 2 * electron_mass_ev * 1e-6) / t.E());
+                double cost = sqrt(energy_gamma / (2 * electron_mass * 1e6 + energy_gamma) *
+                                   (t.E() + 2 * electron_mass) / t.E());
                 // Penelope, Geant4
                 double sint = 0;
                 if(cost * cost <= 1) {
