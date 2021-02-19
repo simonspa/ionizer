@@ -71,16 +71,6 @@ DepositionBichsel::DepositionBichsel() {
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // SHELL INITIALIZATION
 
-    nvac[1] = 0;
-    nvac[2] = 2;
-    nvac[3] = 2;
-    nvac[4] = 9; // possible transitions to it
-
-    energy_shell[1] =   12.0; // valence band upper edge (holes live below)
-    energy_shell[2] =   99.2; // M
-    energy_shell[3] =  148.7; // L
-    energy_shell[4] = 1839.0; // K
-
     for( unsigned n = 1; n <= 4; ++n ) {
         for( unsigned i = 1; i <= 9; ++i ) {
             auger_prob_integral[n][i] = 0;
