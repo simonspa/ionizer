@@ -6,8 +6,8 @@ MazziottaIonizer::MazziottaIonizer(std::ranlux24* random_engine) : random_engine
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // SHELL INITIALIZATION
 
-    for( unsigned n = 1; n <= 4; ++n ) {
-        for( unsigned i = 1; i <= 9; ++i ) {
+    for(unsigned n = 1; n <= 4; ++n) {
+        for(unsigned i = 1; i <= 9; ++i) {
             auger_prob_integral[n][i] = 0;
             auger_energy[n][i] = 0;
         }
@@ -50,22 +50,21 @@ MazziottaIonizer::MazziottaIonizer(std::ranlux24* random_engine) : random_engine
     auger_energy[4][9] = 1839.0;
 
     auger_energy[3][1] = 148.7;
-    auger_energy[3][2] =  49.5;
+    auger_energy[3][2] = 49.5;
 
     auger_energy[2][1] = 99.2;
-    auger_energy[2][2] =  0.0;
+    auger_energy[2][2] = 0.0;
 }
 
 double MazziottaIonizer::get_uniform_prn() {
-   if(random_engine_ == nullptr) {
-       exit(1);
-   }
+    if(random_engine_ == nullptr) {
+        exit(1);
+    }
 
-   return uniform_dist(*random_engine_);
+    return uniform_dist(*random_engine_);
 }
 
-std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
-{
+std::stack<double> MazziottaIonizer::getIonization(double energy_gamma) {
 
     // INPUT:
     // EG = VIRTUAL GAMMA ENERGY [eV]
@@ -74,36 +73,36 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
     // veh ENERGIES OF PRIMARY e/h
     std::stack<double> veh;
 
-    //energy_gamma = energy_gamma - energy_gap; // double counting?
+    // energy_gamma = energy_gamma - energy_gap; // double counting?
 
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
     const double energy_valence = energy_shell[1]; // 12.0 eV
 
     int is = -1;
-    if( energy_gamma <= energy_shell[1] ) {
+    if(energy_gamma <= energy_shell[1]) {
         is = 0;
-    } else if( energy_gamma <= EPP[3] ) {
+    } else if(energy_gamma <= EPP[3]) {
         is = 1;
     } else {
         double PV[5];
-        if( energy_gamma > EPP[13] ) {
+        if(energy_gamma > EPP[13]) {
             PV[1] = PM[13];
             PV[2] = PL23[13];
             PV[3] = PL1[13];
             PV[4] = PK[13];
         } else {
             unsigned iep = 3;
-            for( ; iep < 13; ++iep ) {
-                if( energy_gamma > EPP[iep] && energy_gamma <= EPP[iep+1] ) {
+            for(; iep < 13; ++iep) {
+                if(energy_gamma > EPP[iep] && energy_gamma <= EPP[iep + 1]) {
                     break;
                 }
             }
 
             // interpolate:
-            PV[1] = PM[iep] + ( PM[iep+1] - PM[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
-            PV[2] = PL23[iep] + ( PL23[iep+1] - PL23[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
-            PV[3] = PL1[iep] + ( PL1[iep+1] - PL1[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
-            PV[4] = PK[iep] + ( PK[iep+1] - PK[iep] ) / ( EPP[iep+1] - EPP[iep] ) * ( energy_gamma - EPP[iep] );
+            PV[1] = PM[iep] + (PM[iep + 1] - PM[iep]) / (EPP[iep + 1] - EPP[iep]) * (energy_gamma - EPP[iep]);
+            PV[2] = PL23[iep] + (PL23[iep + 1] - PL23[iep]) / (EPP[iep + 1] - EPP[iep]) * (energy_gamma - EPP[iep]);
+            PV[3] = PL1[iep] + (PL1[iep + 1] - PL1[iep]) / (EPP[iep + 1] - EPP[iep]) * (energy_gamma - EPP[iep]);
+            PV[4] = PK[iep] + (PK[iep + 1] - PK[iep]) / (EPP[iep + 1] - EPP[iep]) * (energy_gamma - EPP[iep]);
         }
 
         double PPV = PV[1] + PV[2] + PV[3] + PV[4];
@@ -115,7 +114,7 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
         double rs = get_uniform_prn();
         unsigned iv = 1;
         for(; iv <= 4; ++iv) {
-            PV[iv] = PV[iv]/PPV; // normalize
+            PV[iv] = PV[iv] / PPV; // normalize
             if(PV[iv] > rs) {
                 break;
             }
@@ -124,7 +123,7 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
         is = std::min(iv, 4u);
     }
 
-    //cout << "  shells for " << energy_gamma << " eV, energy_valence " << energy_valence << ", is " << is << std::endl;
+    // cout << "  shells for " << energy_gamma << " eV, energy_valence " << energy_valence << ", is " << is << std::endl;
 
     // PROCESSES:
 
@@ -148,8 +147,8 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
     // PHOTOABSORPTION IN AN INNER SHELL
     double Ephe = energy_gamma - energy_shell[is];
     if(Ephe <= 0) {
-        std::cout << "shells: photoelectron with negative energy "
-        << energy_gamma << ", shell " << is << " at " << energy_shell[is] << " eV" << std::endl;
+        std::cout << "shells: photoelectron with negative energy " << energy_gamma << ", shell " << is << " at "
+                  << energy_shell[is] << " eV" << std::endl;
         return veh;
     }
 
@@ -160,7 +159,7 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
     double raug = get_uniform_prn();
 
     int ks = 1;
-    if( is <= 1 ) {
+    if(is <= 1) {
         ks = 1;
     } else if(is <= 3) {
         if(raug > auger_prob_integral[is][1]) {
@@ -168,8 +167,8 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
         }
     } else {
         if(raug >= auger_prob_integral[is][1]) {
-            for( int js = 2; js <= nvac[is]; ++js ) {
-                if( raug >= auger_prob_integral[is][js-1] && raug < auger_prob_integral[is][js] ) {
+            for(int js = 2; js <= nvac[is]; ++js) {
+                if(raug >= auger_prob_integral[is][js - 1] && raug < auger_prob_integral[is][js]) {
                     ks = js;
                 }
             }
@@ -182,9 +181,9 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
             // TRANSITION L23 M M
             transition(energy_valence, auger_energy[2][1], veh);
         }
-    } else if( is == 3 ) {
+    } else if(is == 3) {
         // L1-SHELL VACANCIES
-        if( ks == 2 ) {
+        if(ks == 2) {
             // TRANSITION L1 L23 M
             double energy = energy_valence * get_uniform_prn();
             veh.push(energy);
@@ -198,12 +197,12 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
             // TRANSITION L1 M M
             transition(energy_valence, auger_energy[3][1], veh);
         }
-    } else if( is == 4 ) {
+    } else if(is == 4) {
         // K-SHELL VACANCIES
-        if( ks >= 8 ) {
+        if(ks >= 8) {
             // TRANSITION K M M
             transition(energy_valence, auger_energy[is][ks], veh);
-        } else if( ks == 6 || ks == 7 ) {
+        } else if(ks == 6 || ks == 7) {
             // TRANSITION K L23 M
             double energy = energy_valence * get_uniform_prn();
             veh.push(energy);
@@ -213,7 +212,7 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
-        } else if( ks == 4 || ks == 5 ) {
+        } else if(ks == 4 || ks == 5) {
             // TRANSITION K L1 M
             double energy = energy_valence * get_uniform_prn();
             veh.push(energy);
@@ -246,7 +245,7 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
-        } else if( ks == 2 ) {
+        } else if(ks == 2) {
             // TRANSITION K L1 L23
             veh.push(auger_energy[is][ks]); // default
 
@@ -271,7 +270,7 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             }
-        } else if( ks == 1 ) {
+        } else if(ks == 1) {
             // TRANSITION K L1 L1
             veh.push(auger_energy[is][ks]); // default
 
@@ -309,17 +308,17 @@ std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
                 transition(energy_valence, auger_energy[3][1], veh);
             }
         } // ks
-    } // is 4
+    }     // is 4
 
     return veh;
 } // SHELLS
 
-void MazziottaIonizer::transition(double energy_valence, double energy_auger, std::stack <double> &veh) {
+void MazziottaIonizer::transition(double energy_valence, double energy_auger, std::stack<double>& veh) {
 
     auto gentri = [&]() { // -1..1
         double x = 0, r2 = 0, trian = 0;
         do {
-            x = -1 + 2*get_uniform_prn();
+            x = -1 + 2 * get_uniform_prn();
             r2 = get_uniform_prn();
             trian = x < 0 ? x + 1 : -x + 1;
         } while(trian > r2); // rejection method
@@ -328,7 +327,7 @@ void MazziottaIonizer::transition(double energy_valence, double energy_auger, st
     };
 
     // AUGER ELECTRON
-    double rEv = ( 1 + gentri() ) * energy_valence; // 0..2*Ev
+    double rEv = (1 + gentri()) * energy_valence; // 0..2*Ev
     veh.push(energy_auger - rEv);
 
     // ASSIGN ENERGIES TO THE HOLES
