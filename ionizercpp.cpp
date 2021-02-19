@@ -70,7 +70,7 @@ using namespace ionizer;
 // forward declarations:
 void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE);
 void read_macomtab(int n2, unsigned int nume, ionizer::table &sig);
-void read_emerctab(ionizer::table &sig, double (&xkmn)[]);
+void read_emerctab(ionizer::table &sig, ionizer::table &xkmn);
 
 double gena1();
 double gena2();
@@ -366,7 +366,7 @@ int main( int argc, char* argv[] )
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-    double xkmn[200];
+    ionizer::table xkmn;
     read_emerctab(sig[6], xkmn);
 
 
@@ -1094,11 +1094,8 @@ void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &e
         getline(heps, line);
         std::istringstream tokenizer(line);
 
-        double etbl, ep1, ep2, rimt;
-        tokenizer >> jt >> etbl >> ep1 >> ep2 >> rimt;
-
-        ep_1[jt] = ep1;
-        ep_2[jt] = ep2;
+        double etbl, rimt;
+        tokenizer >> jt >> etbl >> ep_1[jt] >> ep_2[jt] >> rimt;
 
         // The dipole oscillator strength df/dE is calculated, essentially Eq. (2.20)
         dfdE[jt] = rimt * 0.0092456 * E[jt];
@@ -1141,15 +1138,13 @@ void read_macomtab(int n2, unsigned int nume, ionizer::table &sig) {
         getline(macom, line);
         std::istringstream tokenizer(line);
 
-        double etbl, sigt;
-        tokenizer >> jt >> etbl >> sigt;
-
-        sig[jt] = sigt;
+        double etbl;
+        tokenizer >> jt >> etbl >> sig[jt];
     }
     std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
 }
 
-void read_emerctab(ionizer::table &sig, double (&xkmn)[]) {
+void read_emerctab(ionizer::table &sig, ionizer::table &xkmn) {
     std::ifstream emerc( "EMERC.TAB" );
     if(emerc.bad() || !emerc.is_open()) {
         std::cout << "Error opening EMERC.TAB" << std::endl;
@@ -1173,11 +1168,8 @@ void read_emerctab(ionizer::table &sig, double (&xkmn)[]) {
         getline(emerc, line);
         std::istringstream tokenizer( line );
 
-        double etbl, sigt, xk;
-        tokenizer >> jt >> etbl >> sigt >> xk;
-
-        sig[jt] = sigt; // overwritten!
-        xkmn[jt] = xk;
+        double etbl;
+        tokenizer >> jt >> etbl >> sig[jt] >> xkmn[jt];
     }
     std::cout << "  read " << jt << " data lines from EMERC.TAB" << std::endl;
 }
