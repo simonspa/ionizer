@@ -292,18 +292,10 @@ int main( int argc, char* argv[] )
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // book histos
 
-    TFile * histoFile = new
-    TFile( Form( "ionizercpp_p%i_w%i_d%i_t%i_c%i.hist",
-    int(pitch+0.5), int(width+0.5), int(depth+0.5),
-    int(thr), int(100*cx+0.1) ),
-    "RECREATE" );
+    TFile * histoFile = new TFile(Form("ionizercpp_p%i_w%i_d%i_t%i_c%i.hist", int(pitch+0.5), int(width+0.5), int(depth+0.5), int(thr), int(100*cx+0.1)), "RECREATE" );
 
-    // book histos:
-
-    TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]",
-    140, -3, 4 );
-    TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]",
-    140, -3, 4 );
+    TProfile elvse( "elvse", "elastic mfp;log_{10}(E_{kin}[MeV]);elastic mfp [#mum]", 140, -3, 4 );
+    TProfile invse( "invse", "inelastic mfp;log_{10}(E_{kin}[MeV]);inelastic mfp [#mum]", 140, -3, 4 );
 
     TH1I hstep5( "step5", "step length;step length [#mum];steps", 500, 0, 5 );
     TH1I hstep0( "step0", "step length;step length [#mum];steps", 500, 0, 0.05 );
@@ -313,125 +305,74 @@ int main( int argc, char* argv[] )
     TH1I hde1( "de1", "step E loss;step E loss [eV];steps", 100, 0, 5000 );
     TH1I hde2( "de2", "step E loss;step E loss [keV];steps", 200, 0, 20 );
     TH1I hdel( "del", "log step E loss;log_{10}(step E loss [eV]);steps", 140, 0, 7 );
-    TH1I htet( "tet", "delta emission angle;delta emission angle [deg];inelasic steps",
-    180, 0, 90 );
+    TH1I htet( "tet", "delta emission angle;delta emission angle [deg];inelasic steps", 180, 0, 90 );
     TH1I hnprim( "nprim", "primary eh;primary e-h;scatters", 21, -0.5, 20.5 );
     TH1I hlogE( "logE", "log Eeh;log_{10}(E_{eh}) [eV]);eh", 140, 0, 7 );
     TH1I hlogn( "logn", "log neh;log_{10}(n_{eh});clusters",  80, 0, 4 );
 
-    TH1I hscat( "scat", "elastic scattering angle;scattering angle [deg];elastic steps",
-    180, 0, 180 );
+    TH1I hscat( "scat", "elastic scattering angle;scattering angle [deg];elastic steps", 180, 0, 180 );
 
     TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*depth*5, 0, 4*depth*5 );
 
     double lastbin = 5*0.35*depth; // 350 eV/micron
-    if( Ekin0 < 1.1 )
-    lastbin = 1.05*Ekin0*1e3; // [keV]
-    TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV",
-    std::max(100,int(lastbin)), 0, int(lastbin) );
-    TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta",
-    std::max(100,int(lastbin)), 0, int(lastbin) );
-    TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta",
-    std::max(100,int(lastbin)), 0, int(lastbin) );
+    if( Ekin0 < 1.1 ) {
+        lastbin = 1.05*Ekin0*1e3; // [keV]
+    }
+    TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV", std::max(100,int(lastbin)), 0, int(lastbin) );
+    TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta", std::max(100,int(lastbin)), 0, int(lastbin) );
+    TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta", std::max(100,int(lastbin)), 0, int(lastbin) );
 
-    TH1I hteh( "teh", "total e-h;total charge [ke];tracks",
-    std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
-    TH1I hq0( "q0", "normal charge;normal charge [ke];tracks",
-    std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
-    TH1I hrms( "rms", "RMS e-h;charge RMS [e];tracks",
-    100, 0, 50*depth );
+    TH1I hteh( "teh", "total e-h;total charge [ke];tracks", std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
+    TH1I hq0( "q0", "normal charge;normal charge [ke];tracks", std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
+    TH1I hrms( "rms", "RMS e-h;charge RMS [e];tracks", 100, 0, 50*depth );
 
     TH1I * h1zev[11];
     TH2I * h2zxev[11];
     for( unsigned i = 0; i < 11; ++i ) {
-        h1zev[i] = new
-        TH1I( Form( "z%02i", i ),
-        Form( "z event %i;z [#mum];clusters [eh-pairs]", i ),
-        4*depth, 0, depth );
-        h2zxev[i] = new
-        TH2I( Form( "zx%02i", i ),
-        Form( "z-x event %i;x [#mum];z [#mum];clusters [eh-pairs]", i ),
-        4*2*pitch, -pitch, pitch, 4*depth, 0, depth );
+        h1zev[i] = new TH1I( Form( "z%02i", i ), Form( "z event %i;z [#mum];clusters [eh-pairs]", i ), 4*depth, 0, depth );
+        h2zxev[i] = new TH2I( Form( "zx%02i", i ), Form( "z-x event %i;x [#mum];z [#mum];clusters [eh-pairs]", i ), 4*2*pitch, -pitch, pitch, 4*depth, 0, depth );
     }
 
-    TH2I * h2xy = new
-    TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]",
-    400, -200, 200, 400, -200, 200 );
-    TH2I * h2zx = new
-    TH2I( "zx","z-x clusters;x [#mum];z [#mum];clusters [eh-pairs]",
-    4*pitch, -2*pitch, 2*pitch, depth, 0, depth );
+    TH2I * h2xy = new TH2I( "xy","x-y clusters;x [#mum];y [#mum];clusters [eh-pairs]", 400, -200, 200, 400, -200, 200 );
+    TH2I * h2zx = new TH2I( "zx","z-x clusters;x [#mum];z [#mum];clusters [eh-pairs]", 4*pitch, -2*pitch, 2*pitch, depth, 0, depth );
 
     TH1I hdtime( "dtime", "drift time;drift time [ns];clusters", 100, 0, 10+20*j );
     TH1I hdiff( "diff", "diffusion width;diffusion width [#mum];clusters", 100, 0, 10 );
     TH1I htf( "tf", "Gaussian tail fraction;Gausian tail fraction;clusters", 100, 0, 1 );
-    TProfile tfvsx( "tfvsx", "Gaussian tail fraction vs x;x [#mum];Gausian tail fraction",
-    200, -0.5*pitch, 0.5*pitch );
+    TProfile tfvsx( "tfvsx", "Gaussian tail fraction vs x;x [#mum];Gausian tail fraction", 200, -0.5*pitch, 0.5*pitch );
 
     TH1I hcleh( "cleh", "cluster neh;log_{10}(cluster eh [pairs]);clusters", 80, 0, 4 );
-    TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]);<w> [eV/pair]",
-    80, 0, 4 );
+    TProfile wvse( "wvse", "energy per eh pair;log_{10}(step E loss [eV]);<w> [eV/pair]", 80, 0, 4 );
     TH1I hreh( "reh", "eh/eV;eh/dE [pairs/eV];clusters", 160, 0, 0.8 );
 
     TH1I heta0( "eta0", "eta;eta;tracks", 201, -1.005, 1.005 );
-    TProfile eta0vsxm( "eta0vsxm", "eta vs track;track x [#mum];<eta>",
-    200, -0.5*pitch, 0.5*pitch );
-    TH1I hdx0( "dx0", "dx0;#Deltax [#mum];tracks",
-    501, -pitch*1.001, pitch*1.001 );
-    TProfile madx0vsq( "madx0vsq",
-    "MAD(#Deltax) vs charge;charge [ke];MAD(#Deltax) [#mum]",
-    100, 0, 2*0.1*depth );
-    TH1I hdx0q( "dx0q", "dx0 Landau peak;#Deltax [#mum];tracks",
-    501, -pitch*1.001, pitch*1.001 );
-    TProfile dx0qvsxm( "dx0qvsxm", "#Deltax vs x;track x [#mum];<#Deltax> [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
-    TProfile
-    madx0qvsxm( "madx0qvsxm", "MAD(#Deltax) vs x;track x [#mum];MAD(#Deltax) [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
-    TProfile
-    madx0qvsxm0( "madx0qvsxm0",
-    "MAD(#Deltax) vs x no delta;track x [#mum];MAD(#Deltax) [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
-    TProfile
-    madx0qvsxm1( "madx0qvsxm1",
-    "MAD(#Deltax) vs x delta;track x [#mum];MAD(#Deltax) [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
+    TProfile eta0vsxm( "eta0vsxm", "eta vs track;track x [#mum];<eta>", 200, -0.5*pitch, 0.5*pitch );
+    TH1I hdx0( "dx0", "dx0;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TProfile madx0vsq( "madx0vsq", "MAD(#Deltax) vs charge;charge [ke];MAD(#Deltax) [#mum]", 100, 0, 2*0.1*depth );
+    TH1I hdx0q( "dx0q", "dx0 Landau peak;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TProfile dx0qvsxm( "dx0qvsxm", "#Deltax vs x;track x [#mum];<#Deltax> [#mum]", pitch, -0.5*pitch, 0.5*pitch );
+    TProfile madx0qvsxm( "madx0qvsxm", "MAD(#Deltax) vs x;track x [#mum];MAD(#Deltax) [#mum]", pitch, -0.5*pitch, 0.5*pitch );
+    TProfile madx0qvsxm0( "madx0qvsxm0", "MAD(#Deltax) vs x no delta;track x [#mum];MAD(#Deltax) [#mum]", pitch, -0.5*pitch, 0.5*pitch );
+    TProfile madx0qvsxm1( "madx0qvsxm1", "MAD(#Deltax) vs x delta;track x [#mum];MAD(#Deltax) [#mum]", pitch, -0.5*pitch, 0.5*pitch );
 
     // threshold:
-
-    TH1I hpxq1( "pxq1", "thresholded pixel charge;pixel charge [ke];pixels",
-    std::max(100,int(10*0.1*depth/1)), 0, std::max(1,int(5*0.1*depth/1)) );
-    TH1I hq1( "q1", "thresholded charge;charge [ke];tracks",
-    std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
+    TH1I hpxq1( "pxq1", "thresholded pixel charge;pixel charge [ke];pixels", std::max(100,int(10*0.1*depth/1)), 0, std::max(1,int(5*0.1*depth/1)) );
+    TH1I hq1( "q1", "thresholded charge;charge [ke];tracks", std::max(100,int(50*0.1*depth)), 0, std::max(1,int(10*0.1*depth)) );
     TH1I hnpx1( "npx1", "npx after threshold;npx;tracks", 4, 0.5, 4.5 );
-    TProfile npx1vsxm( "npx1vsxm", "npx threshold vs track;track x [#mum];<npx>",
-    200, -0.5*pitch, 0.5*pitch );
+    TProfile npx1vsxm( "npx1vsxm", "npx threshold vs track;track x [#mum];<npx>", 200, -0.5*pitch, 0.5*pitch );
     TH1I heta1( "eta1", "eta threshold;eta;tracks", 201, -1.005, 1.005 );
-    TProfile eta1vsxm( "eta1vsxm", "eta threshold vs track;track x [#mum];<eta>",
-    200, -0.5*pitch, 0.5*pitch );
-    TProfile x1vsxm( "x1vsxm", "xcog threshold vs track;track x [#mum];<cog> [#mum]",
-    200, -0.5*pitch, 0.5*pitch );
-    TH1I hdx1( "dx1",
-    "dx threshold;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
-    TProfile madx1vsq( "madx1vsq",
-    "MAD(#Deltax) vs charge;charge [ke];MAD(#Deltax) [#mum]",
-    100, 0, 2*0.1*depth );
-    TH1I hdx1q( "dx1q",
-    "dx threshold Landau peak;#Deltax [#mum];tracks",
-    501, -pitch*1.001, pitch*1.001 );
-    TProfile dx1qvsxm( "dx1qvsxm", "#Deltax vs x;track x [#mum];<#Deltax> [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
-    TProfile madx1qvsxm( "madx1qvsxm",
-    "MAD(#Deltax) vs x;track x [#mum];MAD(#Deltax) [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
+    TProfile eta1vsxm( "eta1vsxm", "eta threshold vs track;track x [#mum];<eta>", 200, -0.5*pitch, 0.5*pitch );
+    TProfile x1vsxm( "x1vsxm", "xcog threshold vs track;track x [#mum];<cog> [#mum]", 200, -0.5*pitch, 0.5*pitch );
+    TH1I hdx1( "dx1", "dx threshold;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TProfile madx1vsq( "madx1vsq", "MAD(#Deltax) vs charge;charge [ke];MAD(#Deltax) [#mum]", 100, 0, 2*0.1*depth );
+    TH1I hdx1q( "dx1q", "dx threshold Landau peak;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TProfile dx1qvsxm( "dx1qvsxm", "#Deltax vs x;track x [#mum];<#Deltax> [#mum]", pitch, -0.5*pitch, 0.5*pitch );
+    TProfile madx1qvsxm( "madx1qvsxm", "MAD(#Deltax) vs x;track x [#mum];MAD(#Deltax) [#mum]", pitch, -0.5*pitch, 0.5*pitch );
 
-    TH1I hda1( "da1", "da threshold;#Deltax [#mum];tracks",
-    501, -pitch*1.001, pitch*1.001 );
-    TH1I hda1q( "da1q",
-    "da threshold Landau peak;#Deltax [#mum];tracks",
-    501, -pitch*1.001, pitch*1.001 );
-    TProfile mada1qvsxm( "mada1qvsxm",
-    "MAD(#Deltaa) vs x;track x [#mum];MAD(#Deltaa) [#mum]",
-    pitch, -0.5*pitch, 0.5*pitch );
+    TH1I hda1( "da1", "da threshold;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TH1I hda1q( "da1q", "da threshold Landau peak;#Deltax [#mum];tracks", 501, -pitch*1.001, pitch*1.001 );
+    TProfile mada1qvsxm( "mada1qvsxm", "MAD(#Deltaa) vs x;track x [#mum];MAD(#Deltaa) [#mum]", pitch, -0.5*pitch, 0.5*pitch );
+
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // silicon:
