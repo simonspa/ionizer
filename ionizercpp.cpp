@@ -154,17 +154,14 @@ int main( int argc, char* argv[] )
 
     // delta ray range: 1 um at 10 keV (Mazziotta 2004)
     //double explicit_delta_energy_cut_keV = 2; Dec 2019
-    double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
+    const double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
+    const auto default_particle_type = ParticleType::ELECTRON;
+    const double temperature = 298; // [K]
 
-    auto default_particle_type = ParticleType::ELECTRON;
-
-    double temp = 298; // [K]
-
-    double electron_mass_mev = 0.51099906; // e mass [MeV]
-    double electron_mass_ev = 1e6 * electron_mass_mev; // me [eV]
-    double rydberg_constant = 13.6056981;
-    double fac = 8.0 * M_PI * rydberg_constant*rydberg_constant * pow( 0.529177e-8, 2 ) / electron_mass_ev;
-    double log10 = log(10);
+    const double electron_mass_mev = 0.51099906; // e mass [MeV]
+    const double electron_mass_ev = 1e6 * electron_mass_mev; // me [eV]
+    const double rydberg_constant = 13.6056981;
+    const double fac = 8.0 * M_PI * rydberg_constant*rydberg_constant * pow( 0.529177e-8, 2 ) / electron_mass_ev;
 
     std::cout << "  particle type     " << default_particle_type << std::endl;
     std::cout << "  kinetic energy    " << Ekin0 << " MeV" << std::endl;
@@ -173,55 +170,40 @@ int main( int argc, char* argv[] )
     std::cout << "  pixel depth       " << depth << " um" << std::endl;
     std::cout << "  incident angle    " << turn*180/M_PI << " deg" << std::endl;
     std::cout << "  track width       " << width << " um" << std::endl;
-    std::cout << "  temperature       " << temp << " K" << std::endl;
+    std::cout << "  temperature       " << temperature << " K" << std::endl;
     std::cout << "  readout threshold " << thr << " e" << std::endl;
     std::cout << "  cross talk        " << cx*100 << "%" << std::endl;
 
+    // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // mobility from pixelav:
     // 0 = e, 1 = h
-
     int j = 0; // e CMS, B2 pixel
-    //int j = 1; // h for strips
-
-    double cvm[2] = { 1.53e9, 1.62e8 }; // [cm/s] vmax at temp=1K
+    double cvm[2] = { 1.53e9, 1.62e8 }; // [cm/s] vmax at temperature=1K
     double evm[2] = { -0.87, -0.52 };
-    double vm = cvm[j] * pow( temp, evm[j] );
-
+    double vm = cvm[j] * pow(temperature, evm[j]);
     double cec[2] = { 1.01, 1.24 }; // [V/cm] Ecrit
     double eec[2] = { 1.55, 1.68 };
-    double Ec = cec[j] * pow( temp, eec[j] );
+    double Ec = cec[j] * pow(temperature, eec[j]);
     double mu0 = vm / Ec;
-
     double cbeta[2] = { 0.0257, 0.46 };
     double ebeta[2] = { 0.66, 0.17 };
-    double beta = cbeta[j] * pow( temp, ebeta[j] );
+    double beta = cbeta[j] * pow(temperature, ebeta[j]);
     double ibeta = 1 / beta;
-
     double d2 = Efield / Ec;
     double d3 = pow( d2, beta ) + 1.;
     double mu = mu0 / pow( d3, ibeta ); // mu0 / ( 1 + (E/Ec)^b )^(1/b)
     const double vd = Efield*mu; // [cm/s]
-
     // diffusion from mobility: D = kTmu/e
     // e = 1.602e-19 C
     // k = 1.38e-23 J/K
     // k/e = 8.6e-5 eV/K
+    const double D = 8.61733e-5 * temperature * mu; // diffuson constant
 
-    const double D = 8.61733e-5 * temp * mu; // diffuson constant
-
-    std::cout
-    << std::endl
-    << "   mobility for " << Efield << " V/cm"
-    << ": vm " << vm // cm/s = 100 um / ns
-    << ", Ec " << Ec
-    << ", mu0 " << mu0 << std::endl
-    << "  beta " << beta
-    << ", mu " << mu
-    << ", v " << vd << " cm/s"
-    << " = " << vd/1e5 << " mu/ns" << std::endl
-    << "  D " << D
-    << ", rms " << sqrt(2*D*4e-9)*1e4 << " mu" // for 4 ns drift
-    << std::endl;
+    std::cout << std::endl << "   mobility for " << Efield << " V/cm" << ": vm " << vm // cm/s = 100 um / ns
+              << ", Ec " << Ec << ", mu0 " << mu0 << std::endl << "  beta " << beta << ", mu " << mu
+              << ", v " << vd << " cm/s" << " = " << vd/1e5 << " mu/ns" << std::endl << "  D " << D
+              << ", rms " << sqrt(2*D*4e-9)*1e4 << " mu" // for 4 ns drift
+              << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // book histos
@@ -248,10 +230,7 @@ int main( int argc, char* argv[] )
 
     TH1I hncl( "ncl", "clusters;e-h clusters;tracks", 4*depth*5, 0, 4*depth*5 );
 
-    double lastbin = 5*0.35*depth; // 350 eV/micron
-    if( Ekin0 < 1.1 ) {
-        lastbin = 1.05*Ekin0*1e3; // [keV]
-    }
+    double lastbin = Ekin0 < 1.1 ? 1.05*Ekin0*1e3 : 5*0.35*depth; // 350 eV/micron
     TH1I htde( "tde", "sum E loss;sum E loss [keV];tracks / keV", std::max(100,int(lastbin)), 0, int(lastbin) );
     TH1I htde0( "tde0", "sum E loss, no delta;sum E loss [keV];tracks, no delta", std::max(100,int(lastbin)), 0, int(lastbin) );
     TH1I htde1( "tde1", "sum E loss, with delta;sum E loss [keV];tracks, with delta", std::max(100,int(lastbin)), 0, int(lastbin) );
@@ -311,12 +290,11 @@ int main( int argc, char* argv[] )
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // silicon:
 
-    double atomic_number = 14.0; // ZA = atomic number of absorber, Si
-    double atomic_weight = 28.086; // AW = atomic weight of absorber
-    double density = 2.329; // rho= density of absorber material
-    double radiation_length = 9.36; // [cm]
-
-    double atnu = 6.0221367e23 * density / atomic_weight; // atnu = # of atoms per cm**3
+    const double atomic_number = 14.0; // ZA = atomic number of absorber, Si
+    const double atomic_weight = 28.086; // AW = atomic weight of absorber
+    const double density = 2.329; // rho= density of absorber material
+    const double radiation_length = 9.36; // [cm]
+    const double atnu = 6.0221367e23 * density / atomic_weight; // atnu = # of atoms per cm**3
 
     std::ranlux24 rgen; // C++11 random number engine
     if(seed != 0) {
@@ -359,18 +337,19 @@ int main( int argc, char* argv[] )
     //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
 
-    std::array<ionizer::table, 7> sig;
-    read_macomtab(n2, E.size() - 1, sig[6]);
+    std::array<ionizer::table, 6> sig;
+    ionizer::table oscillator_strength_ae;
+    read_macomtab(n2, E.size() - 1, oscillator_strength_ae);
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
     ionizer::table xkmn;
-    read_emerctab(sig[6], xkmn);
+    read_emerctab(oscillator_strength_ae, xkmn);
 
 
     // EGAP = GAP ENERGY IN eV
     // EMIN = THRESHOLD ENERGY (ALIG ET AL., PRB22 (1980), 5565)
-    double energy_gap = 1.17 - 4.73e-4 * temp*temp / (636+temp);
+    double energy_gap = 1.17 - 4.73e-4 * temperature*temperature / (636+temperature);
     double energy_threshold = 1.5*energy_gap; // energy conservation
 
     double eom0 = 0.063; // phonons
@@ -450,10 +429,8 @@ int main( int argc, char* argv[] )
                     // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
                     // sig(*,j) actually is E**2 * sigma(E)
 
-                    double tsig[6];
-
-                    for( unsigned i = 1; i <= 5; ++i )
-                    tsig[i] = 0;
+                    std::array<double, 6> tsig;
+                    tsig.fill(0);
 
                     double stpw = 0;
                     ionizer::table H;
@@ -507,7 +484,7 @@ int main( int argc, char* argv[] )
                         // uef from  Eqs. 9 & 2 in Uehling, Ann Rev Nucl Sci 4, 315 (1954)
                         // if( j == 1) PRINT*, " uef=",UEF
 
-                        sig[4][j] = 2 * sig[6][j] * uef;
+                        sig[4][j] = 2 * oscillator_strength_ae[j] * uef;
 
                         // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
 
@@ -560,8 +537,8 @@ int main( int argc, char* argv[] )
                         // units ?
                     }
 
-                    elvse.Fill( log(t.E)/log10, 1e4/xlel );
-                    invse.Fill( log(t.E)/log10, 1e4/xm0 );
+                    elvse.Fill( log(t.E)/log(10), 1e4/xlel );
+                    invse.Fill( log(t.E)/log(10), 1e4/xm0 );
 
                     Ekprev = t.E;
 
@@ -617,7 +594,7 @@ int main( int argc, char* argv[] )
                     hde0.Fill( energy_gamma ); // M and L shells
                     hde1.Fill( energy_gamma ); // K shell
                     hde2.Fill( energy_gamma*1e-3 );
-                    hdel.Fill( log(energy_gamma)/log10 );
+                    hdel.Fill( log(energy_gamma)/log(10) );
 
                     double resekin = t.E - energy_gamma*1E-6; // [ MeV]
 
@@ -704,7 +681,7 @@ int main( int argc, char* argv[] )
                         double Eeh = veh.top();
                         veh.pop();
 
-                        hlogE.Fill( Eeh > 1 ? log(Eeh)/log10 : 0);
+                        hlogE.Fill( Eeh > 1 ? log(Eeh)/log(10) : 0);
 
                         if( Eeh > explicit_delta_energy_cut_keV*1e3 ) {
 
@@ -769,7 +746,7 @@ int main( int argc, char* argv[] )
 
                     if( neh > 0 ) {
 
-                        hlogn.Fill( log(neh)/log10 );
+                        hlogn.Fill( log(neh)/log(10) );
 
                         clusters.emplace_back(neh, t.position, energy_gamma);
                         // E = energy_gamma; // [eV]
@@ -888,9 +865,9 @@ int main( int argc, char* argv[] )
             h2zx->Fill( xx, zz, neh );
 
             double Eg = clusters[i].E;
-            hcleh.Fill( log(neh)/log10 ); // per cluster
+            hcleh.Fill( log(neh)/log(10) ); // per cluster
             hreh.Fill( neh/Eg );
-            wvse.Fill( log(Eg)/log10, Eg/neh ); // dE per eh pair
+            wvse.Fill( log(Eg)/log(10), Eg/neh ); // dE per eh pair
 
             // 0 | 1 | 2 | 3, bins 0 and 3 are half-infinite
             // diffusion across x crack: |  |  |
@@ -1013,7 +990,7 @@ int main( int argc, char* argv[] )
     std::cout << "  thickness         " << depth << " um" << std::endl;
     std::cout << "  incident angle    " << turn*180/M_PI << " deg" << std::endl;
     std::cout << "  track width       " << width << " um" << std::endl;
-    std::cout << "  temperature       " << temp << " K" << std::endl;
+    std::cout << "  temperature       " << temperature << " K" << std::endl;
     std::cout << "  readout threshold " << thr << " e" << std::endl;
     std::cout << "  cross talk        " << cx*100 << "%" << std::endl;
 
