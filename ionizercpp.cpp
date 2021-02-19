@@ -73,11 +73,8 @@ void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &e
 void read_macomtab(int n2, unsigned int nume, ionizer::table &sig);
 void read_emerctab(ionizer::table &sig, ionizer::table &xkmn);
 
-double gena1();
-double gena2();
-
-
-std::ranlux24 rgen; // C++11 random number engine
+double gena1(std::ranlux24* random_engine);
+double gena2(std::ranlux24* random_engine);
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int main( int argc, char* argv[] )
@@ -321,6 +318,7 @@ int main( int argc, char* argv[] )
 
     double atnu = 6.0221367e23 * density / atomic_weight; // atnu = # of atoms per cm**3
 
+    std::ranlux24 rgen; // C++11 random number engine
     if(seed != 0) {
         std::cout << "SEEDING with " << seed << std::endl;
         rgen.seed(seed); // seconds since 1.1.1970
@@ -756,8 +754,8 @@ int main( int argc, char* argv[] )
 
                                 ++neh;
 
-                                double E1 = gena1() * (Eeh-energy_threshold);
-                                double E2 = gena2() * (Eeh-energy_threshold-E1);
+                                double E1 = gena1(&rgen) * (Eeh-energy_threshold);
+                                double E2 = gena2(&rgen) * (Eeh-energy_threshold-E1);
 
                                 //cout << "      ion " << Eeh << " => " << E1 << " + " << E2 << std::endl;
 
@@ -1176,14 +1174,14 @@ void read_emerctab(ionizer::table &sig, ionizer::table &xkmn) {
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-double gena1()
+double gena1(std::ranlux24* rgen)
 {
     std::uniform_real_distribution <double> uniform_dist( 0, 1 );
 
     double r1 = 0, r2 = 0, alph1 = 0;
     do {
-        r1 = uniform_dist(rgen);
-        r2 = uniform_dist(rgen);
+        r1 = uniform_dist(*rgen);
+        r2 = uniform_dist(*rgen);
         alph1 = 105./16. * (1.-r1)*(1-r1) * sqrt(r1); // integral = 1, max = 1.8782971
     } while(alph1 > 1.8783*r2); // rejection method
 
@@ -1191,14 +1189,14 @@ double gena1()
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-double gena2()
+double gena2(std::ranlux24* rgen)
 {
     std::uniform_real_distribution <double> uniform_dist( 0, 1 );
 
     double r1 = 0, r2 = 0, alph2 = 0;
     do {
-        r1 = uniform_dist(rgen);
-        r2 = uniform_dist(rgen);
+        r1 = uniform_dist(*rgen);
+        r2 = uniform_dist(*rgen);
         alph2 = 8/M_PI * sqrt( r1*(1-r1) );
     } while(alph2 > 1.27324*r2); // rejection method
 
