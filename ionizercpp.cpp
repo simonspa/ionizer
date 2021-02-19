@@ -141,31 +141,22 @@ double gena2();
 
 
 std::ranlux24 rgen; // C++11 random number engine
-std::uniform_real_distribution <double> unirnd( 0, 1 );
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int main( int argc, char* argv[] )
 {
     // defaults:
-
     bool ldb = 0; // debug flag
 
-    unsigned nev = 10*1000;
-
+    unsigned nev = 10*1000; // events
     double depth = 285; // [mu] pixel depth
-
     double pitch = 25; // [mu] pixels size
-
     double angle = 999; // flag
-
     double thr = 500; // threshold [e]
-
     double cx = 0; // cross talk
-
     double Ekin0 = 5000; // [MeV] kinetic energy
 
     bool fast = 1; // default is fast
-
     uint64_t seed = 0;
 
     for( int i = 1; i < argc; ++i ) {
@@ -215,30 +206,23 @@ int main( int argc, char* argv[] )
             ;
             return 0;
         }
-
     } // argc
 
-    double wt = 180/M_PI;
-    double twopi = 2*M_PI;
-    double w2 = sqrt(2);
 
     double turn = atan( pitch / depth ); // [rad] default
     if( fabs(angle) < 91 )
-    turn = angle/wt;
+    turn = angle/180*M_PI;
 
     double width = depth*tan(turn); // [mu] projected track, default: pitch
 
     // [V/cm] mean electric field: Vbias-Vdepletion/2
     double Efield = (120-30)/depth*1e4; // UHH
-    //double Efield = (70-60)/depth*1e4; // DepFET
 
     // delta ray range: 1 um at 10 keV (Mazziotta 2004)
     //double explicit_delta_energy_cut_keV = 2; Dec 2019
     double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
-    //double explicit_delta_energy_cut_keV = 99; // no effect on resolution
 
     // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
-
     unsigned default_particle_type = 4; // e
 
     double temp = 298; // [K]
@@ -254,7 +238,7 @@ int main( int argc, char* argv[] )
     std::cout << "  number of events  " << nev << std::endl;
     std::cout << "  pixel pitch       " << pitch << " um" << std::endl;
     std::cout << "  pixel depth       " << depth << " um" << std::endl;
-    std::cout << "  incident angle    " << turn*wt << " deg" << std::endl;
+    std::cout << "  incident angle    " << turn*180/M_PI << " deg" << std::endl;
     std::cout << "  track width       " << width << " um" << std::endl;
     std::cout << "  temperature       " << temp << " K" << std::endl;
     std::cout << "  readout threshold " << thr << " e" << std::endl;
@@ -526,6 +510,7 @@ int main( int argc, char* argv[] )
     double aaa = 5.2;    // Alig 1980
 
     DepositionBichsel ionizer;
+    std::uniform_real_distribution <double> unirnd( 0, 1 );
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
     // EVENT LOOP:
@@ -841,7 +826,7 @@ int main( int argc, char* argv[] )
                     // CDTS = SQRT( DE * RB / ( E * ( DE + TME ) ) ) // like Geant
 
                     std::vector <double> din{sint*cos(phi), sint*sin(phi), cost};
-                    htet.Fill( wt*asin(sint) ); // peak at 90, tail to 45, elastic forward
+                    htet.Fill( 180/M_PI*asin(sint) ); // peak at 90, tail to 45, elastic forward
 
                     // transform into detector system:
                     double cz = t.direction.Z();     // delta direction
@@ -893,7 +878,7 @@ int main( int argc, char* argv[] )
 
                         while( fast == 0 && Eeh > energy_threshold ) {
 
-                            double pion = 1 / ( 1 + aaa*105/twopi * sqrt(Eeh-eom0) /
+                            double pion = 1 / ( 1 + aaa*105/2/M_PI * sqrt(Eeh-eom0) /
                             pow( Eeh - energy_threshold, 3.5 ) );
                             // for e and h
 
@@ -978,14 +963,14 @@ int main( int argc, char* argv[] )
                     double cost = 1 - 2*gn*r / ( 2 + gn - 2*r );
                     double sint = sqrt( 1 - cost*cost );
 
-                    double phi = twopi*unirnd(rgen);
+                    double phi = 2*M_PI*unirnd(rgen);
 
                     std::vector <double> din(3);
                     din[0] = sint*cos(phi);
                     din[1] = sint*sin(phi);
                     din[2] = cost;
 
-                    hscat.Fill( wt*asin(sint) ); // forward peak, tail to 90
+                    hscat.Fill( 180/M_PI*asin(sint) ); // forward peak, tail to 90
 
                     // change direction of delta VECT:
 
@@ -1077,7 +1062,7 @@ int main( int argc, char* argv[] )
 
             double dtime = zz*1e-4/vd; // [s] drift time along z (mean speed theorem)
             double diff = sqrt(2*D*dtime)*1e4; // [mu] rms diffusion (projected or 3D?)
-            double uu = -(xx-xc)/w2/diff; // scaled diffusion distance for erfc
+            double uu = -(xx-xc)/std::sqrt(2)/diff; // scaled diffusion distance for erfc
             double tf = 0.5*erfc(uu); // upper Gaussian tail fraction
 
             hdtime.Fill( dtime*1e9 );
@@ -1177,7 +1162,7 @@ int main( int argc, char* argv[] )
     std::cout << "  number of events  " << nev << std::endl;
     std::cout << "  pixel pitch       " << pitch << " um" << std::endl;
     std::cout << "  thickness         " << depth << " um" << std::endl;
-    std::cout << "  incident angle    " << turn*wt << " deg" << std::endl;
+    std::cout << "  incident angle    " << turn*180/M_PI << " deg" << std::endl;
     std::cout << "  track width       " << width << " um" << std::endl;
     std::cout << "  temperature       " << temp << " K" << std::endl;
     std::cout << "  readout threshold " << thr << " e" << std::endl;
@@ -1331,10 +1316,12 @@ void read_emerctab(double (&sig)[], double (&xkmn)[]) {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gena1()
 {
+    std::uniform_real_distribution <double> uniform_dist( 0, 1 );
+
     double r1 = 0, r2 = 0, alph1 = 0;
     do {
-        r1 = unirnd(rgen);
-        r2 = unirnd(rgen);
+        r1 = uniform_dist(rgen);
+        r2 = uniform_dist(rgen);
         alph1 = 105./16. * (1.-r1)*(1-r1) * sqrt(r1); // integral = 1, max = 1.8782971
     } while(alph1 > 1.8783*r2); // rejection method
 
@@ -1344,10 +1331,12 @@ double gena1()
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 double gena2()
 {
+    std::uniform_real_distribution <double> uniform_dist( 0, 1 );
+
     double r1 = 0, r2 = 0, alph2 = 0;
     do {
-        r1 = unirnd(rgen);
-        r2 = unirnd(rgen);
+        r1 = uniform_dist(rgen);
+        r2 = uniform_dist(rgen);
         alph2 = 8/M_PI * sqrt( r1*(1-r1) );
     } while(alph2 > 1.27324*r2); // rejection method
 
@@ -1369,6 +1358,7 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
 
     // EV = binding ENERGY OF THE TOP OF THE VALENCE BAND
     const double energy_valence = energy_shell[1]; // 12.0 eV
+    std::uniform_real_distribution <double> uniform_dist( 0, 1 );
 
     int is = -1;
     if( energy_gamma <= energy_shell[1] ) {
@@ -1403,7 +1393,7 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
         PV[3] = PV[2] + PV[3];
         PV[4] = PV[3] + PV[4];
 
-        double rs = unirnd(rgen);
+        double rs = uniform_dist(rgen);
         unsigned iv = 1;
         for(; iv <= 4; ++iv) {
             PV[iv] = PV[iv]/PPV; // normalize
@@ -1425,7 +1415,7 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
             return veh;
         }
 
-        double rv = unirnd(rgen);
+        double rv = uniform_dist(rgen);
         if(energy_gamma < energy_valence) {
             veh.push(rv * energy_gamma);
             veh.push((1 - rv) * energy_gamma);
@@ -1448,7 +1438,7 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
     veh.push(Ephe);
 
     // AUGER ELECTRONS:
-    double raug = unirnd(rgen);
+    double raug = uniform_dist(rgen);
 
     int ks = 1;
     if( is <= 1 ) {
@@ -1477,11 +1467,11 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
         // L1-SHELL VACANCIES
         if( ks == 2 ) {
             // TRANSITION L1 L23 M
-            double energy = energy_valence * unirnd(rgen);
+            double energy = energy_valence * uniform_dist(rgen);
             veh.push(energy);
             veh.push(auger_energy[is][ks] - energy);
 
-            if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+            if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
@@ -1496,30 +1486,30 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
             transition(energy_valence, auger_energy[is][ks], veh);
         } else if( ks == 6 || ks == 7 ) {
             // TRANSITION K L23 M
-            double energy = energy_valence * unirnd(rgen);
+            double energy = energy_valence * uniform_dist(rgen);
             veh.push(energy);
             veh.push(auger_energy[is][ks] - energy); // adjust for energy conservation
 
-            if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+            if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
         } else if( ks == 4 || ks == 5 ) {
             // TRANSITION K L1 M
-            double energy = energy_valence * unirnd(rgen);
+            double energy = energy_valence * uniform_dist(rgen);
             veh.push(energy);
             veh.push(auger_energy[is][ks] - energy); // adjust for energy conservation
 
-            if(unirnd(rgen) <= auger_prob_integral[3][1]) {
+            if(uniform_dist(rgen) <= auger_prob_integral[3][1]) {
                 // TRANSITION L1 M M
                 transition(energy_valence, auger_energy[3][1], veh);
             } else {
                 // TRANSITION L1 L23 M
-                double energy = energy_valence * unirnd(rgen);
+                double energy = energy_valence * uniform_dist(rgen);
                 veh.push(energy);
                 veh.push(auger_energy[3][2] - energy);
 
-                if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+                if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
@@ -1528,12 +1518,12 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
             // TRANSITION K L23 L23
             veh.push(auger_energy[is][ks]); // default
 
-            if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+            if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
 
-            if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+            if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
@@ -1542,19 +1532,19 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
             veh.push(auger_energy[is][ks]); // default
 
             // L23-SHELL VACANCIES
-            if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+            if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                 // TRANSITION L23 M M
                 transition(energy_valence, auger_energy[2][1], veh);
             }
 
             // L1-SHELL VACANCIES
-            if(unirnd(rgen) > auger_prob_integral[3][1]) {
+            if(uniform_dist(rgen) > auger_prob_integral[3][1]) {
                 // TRANSITION L1 L23 M
-                double energy = energy_valence * unirnd(rgen);
+                double energy = energy_valence * uniform_dist(rgen);
                 veh.push(energy);
                 veh.push(auger_energy[3][2] - energy);
 
-                if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+                if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
@@ -1567,14 +1557,14 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
             veh.push(auger_energy[is][ks]); // default
 
             // L1-SHELL VACANCIES
-            if(unirnd(rgen) > auger_prob_integral[3][1]) {
+            if(uniform_dist(rgen) > auger_prob_integral[3][1]) {
                 // TRANSITION L1 L23 M
-                double energy = energy_valence * unirnd(rgen);
+                double energy = energy_valence * uniform_dist(rgen);
                 veh.push(energy);
                 veh.push(auger_energy[3][2] - energy);
 
                 // L23-SHELL VACANCIES
-                if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+                if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
@@ -1584,14 +1574,14 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
             }
 
             // L1-SHELL VACANCIES
-            if(unirnd(rgen) > auger_prob_integral[3][1]) {
+            if(uniform_dist(rgen) > auger_prob_integral[3][1]) {
                 // TRANSITION L1 L23 M
-                double energy = energy_valence * unirnd(rgen);
+                double energy = energy_valence * uniform_dist(rgen);
                 veh.push(energy);
                 veh.push(auger_energy[3][2] - energy);
 
                 // L23-SHELL
-                if(unirnd(rgen) <= auger_prob_integral[2][1]) {
+                if(uniform_dist(rgen) <= auger_prob_integral[2][1]) {
                     // TRANSITION L23 M M
                     transition(energy_valence, auger_energy[2][1], veh);
                 }
@@ -1608,11 +1598,12 @@ std::stack<double> DepositionBichsel::shells(double energy_gamma)
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void DepositionBichsel::transition(double energy_valence, double energy_auger, std::stack <double> &veh) {
 
+    std::uniform_real_distribution <double> uniform_dist( 0, 1 );
     auto gentri = [&]() { // -1..1
         double x = 0, r2 = 0, trian = 0;
         do {
-            x = -1 + 2*unirnd(rgen);
-            r2 = unirnd(rgen);
+            x = -1 + 2*uniform_dist(rgen);
+            r2 = uniform_dist(rgen);
             trian = x < 0 ? x + 1 : -x + 1;
         } while(trian > r2); // rejection method
 
@@ -1626,7 +1617,7 @@ void DepositionBichsel::transition(double energy_valence, double energy_auger, s
     // ASSIGN ENERGIES TO THE HOLES
     double energy_hole1 = 0, energy_hole2 = 0;
     do {
-        double rv = unirnd(rgen);
+        double rv = uniform_dist(rgen);
         energy_hole1 = rv * rEv;
         energy_hole2 = (1 - rv) * rEv;
     } while(energy_hole1 > energy_valence || energy_hole2 > energy_valence); // holes stay below valence band edge (12 eV)
