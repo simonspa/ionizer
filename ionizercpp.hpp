@@ -43,46 +43,46 @@ namespace ionizer {
          * @param particle_type Type of particle
          */
         particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType type)
-            : position(std::move(pos)), direction(std::move(dir)), energy_(energy), type_(type){
-                update();
-            };
+            : position_start_(pos), position_end_(std::move(pos)), direction(std::move(dir)), energy_(energy), type_(type) {
+            update();
+        };
 
         /**
          * Default constructor
          */
         particle() = default;
-        ROOT::Math::XYZVector position;
         ROOT::Math::XYZVector direction;
 
-        double E() { return energy_; }
+        ROOT::Math::XYZVector position() const { return position_end_; }
+        void setPosition(ROOT::Math::XYZVector pos) { position_end_ = pos; }
+
+        double E() const { return energy_; }
         void setE(double energy) {
             energy_ = energy;
             update();
         }
-        ParticleType type() { return type_; }
+        ParticleType type() const { return type_; }
         /**
          * Helper to obtain particle rest mass in units of MeV
          * @return Particle rest mass in MeV
          */
-        double mass() { return mass_.at(static_cast<std::underlying_type<ParticleType>::type>(type_)); };
+        double mass() const { return mass_.at(static_cast<std::underlying_type<ParticleType>::type>(type_)); };
 
-        double gamma() {
-            return gamma_;
-        }
+        double gamma() const { return gamma_; }
 
-        double betasquared() {
-            return betasquared_;
-        }
+        double betasquared() const { return betasquared_; }
 
-        double momentum() {
-            return momentum_;
-        }
+        double momentum() const { return momentum_; }
+
     private:
-        double energy_; // [MeV]
+        ROOT::Math::XYZVector position_start_;
+        ROOT::Math::XYZVector position_end_;
+
+        double energy_;     // [MeV]
         ParticleType type_; // particle type
 
         void update() {
-            gamma_ = energy_ / mass() + 1.0; // W = total energy / restmass
+            gamma_ = energy_ / mass() + 1.0;                // W = total energy / restmass
             double betagamma = sqrt(gamma_ * gamma_ - 1.0); // bg = beta*gamma = p/m
             betasquared_ = betagamma * betagamma / (1 + betagamma * betagamma);
             momentum_ = mass() * betagamma; // [MeV/c]

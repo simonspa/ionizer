@@ -404,11 +404,10 @@ int main(int argc, char* argv[]) {
         // y :  [cm]
         // z :  pixel from 0 to depth [cm]
 
-
         // Statistics:
         unsigned nsteps = 0; // number of steps for full event
-        unsigned nscat = 0; // elastic scattering
-        unsigned nloss = 0; // ionization
+        unsigned nscat = 0;  // elastic scattering
+        unsigned nloss = 0;  // ionization
         unsigned ndelta = 0; // number of deltas generated
         double total_energy_loss = 0.0;
         unsigned nehpairs = 0;
@@ -430,7 +429,7 @@ int main(int argc, char* argv[]) {
 
             std::cout << "  delta " << t.E() * 1e3 << " keV"
                       << ", cost " << t.direction.Z() << ", u " << t.direction.X() << ", v " << t.direction.Y() << ", z "
-                      << t.position.Z() * 1e4;
+                      << t.position().Z() * 1e4;
 
             while(1) { // steps
 
@@ -451,7 +450,7 @@ int main(int argc, char* argv[]) {
 
                     double zi = 1.0;
                     double dec = zi * zi * atnu * fac / t.betasquared();
-                    double EkeV = t.E() * 1e6;                       // [eV]
+                    double EkeV = t.E() * 1e6; // [eV]
 
                     // Generate collision spectrum sigma(E) from df/dE, epsilon and AE.
                     // sig(*,j) actually is E**2 * sigma(E)
@@ -468,7 +467,6 @@ int main(int argc, char* argv[]) {
                         if(E[j] > Emax) {
                             break;
                         }
-
 
                         // Eq. (3.1) in RMP and red notebook CCS-33, 39 & 47
                         double Q1 = rydberg_constant;
@@ -487,7 +485,8 @@ int main(int argc, char* argv[]) {
                         // longitudinal excitation, Eq. (46) in Fano; Eq. (2.9) in RMP
 
                         double epbe = std::max(1 - t.betasquared() * dielectric_const_real[j], 1e-20); // Fano Eq. (47)
-                        double sgg = E[j] * dfdE[j] * (-0.5) * log(epbe * epbe + pow(t.betasquared() * dielectric_const_imag[j], 2));
+                        double sgg =
+                            E[j] * dfdE[j] * (-0.5) * log(epbe * epbe + pow(t.betasquared() * dielectric_const_imag[j], 2));
 
                         double thet = atan(dielectric_const_imag[j] * t.betasquared() / epbe);
                         if(thet < 0) {
@@ -496,8 +495,8 @@ int main(int argc, char* argv[]) {
                         // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
 
                         double sgh = 0.0092456 * E[j] * E[j] * thet *
-                                     (t.betasquared() - dielectric_const_real[j] /
-                                                   (pow(dielectric_const_real[j], 2) + pow(dielectric_const_imag[j], 2)));
+                                     (t.betasquared() - dielectric_const_real[j] / (pow(dielectric_const_real[j], 2) +
+                                                                                    pow(dielectric_const_imag[j], 2)));
 
                         sig[2][j] = sgg;
                         sig[3][j] = sgh; // small, negative
@@ -518,20 +517,20 @@ int main(int argc, char* argv[]) {
                             // divide by E**2 to get the differential collision cross section sigma
                             // Tsig = integrated total collision cross section
                             tsig[i] = tsig[i] + sig[i][j] * dE[j] / (E[j] * E[j]);
-                        } // i
+                        }                                             // i
                         tsig[5] += sig[5][j] * dE[j] / (E[j] * E[j]); // running sum
 
                         double HE2 = sig[5][j] * dec;
                         H[j] = HE2 / (E[j] * E[j]);
                         stpw += H[j] * E[j] * dE[j]; // dE/dx
                         nlast = j;
-                    } // j
+                    }                    // j
                     xm0 = tsig[5] * dec; // 1/path
 
                     // Statistics:
                     double sst = H[1] * dE[1]; // total cross section (integral)
 
-                    totsig[1] = H[1] * dE[1];  // running integral
+                    totsig[1] = H[1] * dE[1]; // running integral
                     for(unsigned j = 2; j <= nlast; ++j) {
                         totsig[j] = totsig[j - 1] + H[j] * dE[j];
                         sst += H[j] * dE[j];
@@ -546,7 +545,7 @@ int main(int argc, char* argv[]) {
                     if(t.type() == ParticleType::ELECTRON) {
                         // gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / EkeV; // Mazziotta
                         gn = 2 * 2.61 * pow(atomic_number, 2.0 / 3.0) / (t.momentum() * t.momentum()) * 1e-6; // Moliere
-                        double E2 = 14.4e-14;                                                 // [MeV*cm]
+                        double E2 = 14.4e-14;                                                                 // [MeV*cm]
                         double FF = 0.5 * M_PI * E2 * E2 * atomic_number * atomic_number / (t.E() * t.E());
                         double S0EL = 2 * FF / (gn * (2 + gn));
                         // elastic total cross section  [cm2/atom]
@@ -578,24 +577,25 @@ int main(int argc, char* argv[]) {
 
                 double tlam = 1 / (xm0 + xlel); // [cm] TOTAL MEAN FREE PATH (MFP)
 
-                double xr = -log(1 - unirnd(rgen)) * tlam; // exponential step length
+                double step = -log(1 - unirnd(rgen)) * tlam; // exponential step length
 
-                hstep5.Fill(xr * 1e4);
-                hstep0.Fill(xr * 1e4);
+                hstep5.Fill(step * 1e4);
+                hstep0.Fill(step * 1e4);
 
-                double pos_z = t.position.Z() + xr * t.direction.Z();
+                double pos_z = t.position().Z() + step * t.direction.Z();
 
                 if(ldb && t.E() < 1)
-                    std::cout << "step " << xr * 1e4 << ", z " << pos_z * 1e4 << std::endl;
+                    std::cout << "step " << step * 1e4 << ", z " << pos_z * 1e4 << std::endl;
 
                 hzz.Fill(pos_z * 1e4);
 
-                if(pos_z < 0 || pos_z > depth * 1e-4)
+                if(pos_z < 0 || pos_z > depth * 1e-4) {
                     break; // exit back or front
+                }
 
-                t.position += xr * t.direction;
+                t.setPosition(t.position() + step * t.direction);
 
-                if(fabs(t.position.Y()) > 0.0200)
+                if(fabs(t.position().Y()) > 0.0200)
                     break; // save time
 
                 ++nsteps;
@@ -711,7 +711,7 @@ int main(int argc, char* argv[]) {
                             // put delta on std::stack:
                             // E = Eeh*1E-6; // Ekin [MeV]
                             // particle_type = 4; // e
-                            deltas.emplace(Eeh * 1E-6, t.position, delta_direction, ParticleType::ELECTRON);
+                            deltas.emplace(Eeh * 1E-6, t.position(), delta_direction, ParticleType::ELECTRON);
 
                             ++ndelta;
 
@@ -770,7 +770,7 @@ int main(int argc, char* argv[]) {
 
                         hlogn.Fill(log(neh) / log(10));
 
-                        clusters.emplace_back(neh, t.position, energy_gamma);
+                        clusters.emplace_back(neh, t.position(), energy_gamma);
                         // E = energy_gamma; // [eV]
 
                     } // neh
@@ -778,7 +778,7 @@ int main(int argc, char* argv[]) {
                     t.setE(t.E() - energy_gamma * 1E-6); // [MeV]
 
                     if(ldb && t.E() < 1)
-                        std::cout << "    Ek " << t.E() * 1e3 << " keV, z " << t.position.Z() * 1e4 << ", neh " << neh
+                        std::cout << "    Ek " << t.E() * 1e3 << " keV, z " << t.position().Z() * 1e4 << ", neh " << neh
                                   << ", steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", cl "
                                   << clusters.size() << std::endl;
 
@@ -790,7 +790,7 @@ int main(int argc, char* argv[]) {
                     if(t.type() == ParticleType::ELECTRON) { // electrons, update elastic cross section at new t.E()
 
                         // gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E()*1E6); // Mazziotta
-                        double pmom = sqrt(t.E() * (t.E() + 2 * t.mass()));                       // [MeV/c] 2nd binomial
+                        double pmom = sqrt(t.E() * (t.E() + 2 * t.mass()));                   // [MeV/c] 2nd binomial
                         gn = 2 * 2.61 * pow(atomic_number, 2.0 / 3.0) / (pmom * pmom) * 1e-6; // Moliere
                         double E2 = 14.4e-14;                                                 // [MeV*cm]
                         double FF = 0.5 * M_PI * E2 * E2 * atomic_number * atomic_number / (t.E() * t.E());
@@ -844,7 +844,8 @@ int main(int argc, char* argv[]) {
         enddo
         */
 
-        std::cout << "  steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", dE " << total_energy_loss * 1e-3 << " keV"
+        std::cout << "  steps " << nsteps << ", ion " << nloss << ", elas " << nscat << ", dE " << total_energy_loss * 1e-3
+                  << " keV"
                   << ", eh " << nehpairs << ", cl " << clusters.size() << std::endl;
 
         hncl.Fill(clusters.size());
@@ -853,8 +854,8 @@ int main(int argc, char* argv[]) {
             htde1.Fill(total_energy_loss * 1e-3); // [keV]
         else
             htde0.Fill(total_energy_loss * 1e-3); // [keV]
-        hteh.Fill(nehpairs * 1e-3);      // [ke]
-        hq0.Fill(nehpairs * 1e-3);       // [ke]
+        hteh.Fill(nehpairs * 1e-3);               // [ke]
+        hq0.Fill(nehpairs * 1e-3);                // [ke]
         hrms.Fill(sqrt(sumeh2));
 
         // 4 pixels along x:
