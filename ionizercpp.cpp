@@ -69,7 +69,7 @@
 using namespace ionizer;
 
 // forward declarations:
-void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE);
+void read_hepstab(int n2, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE);
 void read_macomtab(int n2, unsigned int nume, ionizer::table &sig);
 void read_emerctab(ionizer::table &sig, ionizer::table &xkmn);
 
@@ -336,32 +336,30 @@ int main( int argc, char* argv[] )
     double Emin = 1839.0 / pow( 2, ken/n2 ); // integer division intended
 
     // EMIN is chosen to give an E-value exactly at the K-shell edge, 1839 eV
-
-    unsigned nume = HEPS_ENTRIES-1;
     ionizer::table E, dE;
     E[1] = Emin;
-    for( unsigned j = 1; j < nume; ++j ) {
-        E[j+1] = E[j] * um; // must agree with heps.tab
-        dE[j]  = E[j+1] - E[j];
+    for(size_t j = 2; j < E.size(); ++j) {
+        E[j] = E[j-1] * um; // must agree with heps.tab
+        dE[j-1]  = E[j] - E[j-1];
     }
 
     std::cout
     << std::endl
     << "  n2 " << n2 << ", Emin " << Emin << ", um " << um
-    << ", E[nume] " << E[nume] << std::endl;
+    << ", E[nume] " << E.back() << std::endl;
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ DIELECTRIC CONSTANTS
 
     std::array<ionizer::table, 3> ep;
     ionizer::table dfdE;
-    read_hepstab(n2, nume, E, ep[1], ep[2], dfdE);
+    read_hepstab(n2, E, ep[1], ep[2], dfdE);
 
     //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
 
     std::array<ionizer::table, 7> sig;
-    read_macomtab(n2, nume, sig[6]);
+    read_macomtab(n2, E.size() - 1, sig[6]);
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
@@ -413,7 +411,7 @@ int main( int argc, char* argv[] )
             auto t = deltas.top();
             deltas.pop();
 
-            unsigned nlast = nume;
+            unsigned nlast = E.size() - 1;
 
             double xm0 = 1;
             double xlel = 1;
@@ -459,7 +457,7 @@ int main( int argc, char* argv[] )
                     double stpw = 0;
                     ionizer::table H;
 
-                    for( unsigned j = 1; j <= nume; ++j ) {
+                    for( unsigned j = 1; j < E.size(); ++j ) {
 
                         if( E[j] > Emax ) break;
 
@@ -510,20 +508,16 @@ int main( int argc, char* argv[] )
 
                         sig[4][j] = 2 * sig[6][j] * uef;
 
-                        // there is a factor of 2 because the integral was over d(lnK)
-                        // rather than d(lnQ)
+                        // there is a factor of 2 because the integral was over d(lnK) rather than d(lnQ)
 
                         sig[5][j] = 0;
 
                         for( unsigned i = 1; i <= 4; ++i ) {
-
                             sig[5][j] += sig[i][j]; // sum
 
                             // divide by E**2 to get the differential collision cross section sigma
                             // Tsig = integrated total collision cross section
-
                             tsig[i]  = tsig[i]  + sig[i][j] * dE[j] / ( E[j]*E[j] );
-
                         } // i
 
                         tsig[5] += sig[5][j] * dE[j] / ( E[j]*E[j] ); // running sum
@@ -531,21 +525,7 @@ int main( int argc, char* argv[] )
                         double HE2  = sig[5][j] * dec;
                         H[j] = HE2 / ( E[j]*E[j] );
                         stpw += H[j] * E[j] * dE[j]; // dE/dx
-                        /*
-                        if( ndelta == 0 )
-                        std::cout << j
-                        << "  " << E[j]
-                        << "  " << dfdE[j]
-                        << "  " << sgg
-                        << "  " << sgh
-                        << "  " << sig[1][j]
-                        << "  " << sig[3][j]
-                        << "  " << sig[4][j]
-                        << "  " << sig[5][j]
-                        << "  " << HE2 << std::endl; // compare Bichsel CONV-5000.OPA: agree
-                        */
                         nlast = j;
-
                     } // j
 
                     xm0 = tsig[5] * dec; // 1/path
@@ -1057,7 +1037,7 @@ int main( int argc, char* argv[] )
 
 } // main
 
-void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE) {
+void read_hepstab(int n2, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE) {
     std::ifstream heps( "HEPS.TAB" );
     if(heps.bad() || !heps.is_open()) {
         std::cout << "Error opening HEPS.TAB" << std::endl;
@@ -1076,11 +1056,11 @@ void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &e
     if(n2 != n2t) {
         std::cout << " CAUTION: n2 & n2t differ" << std::endl;
     }
-    if(nume != numt) {
+    if(E.size() - 1 != numt) {
         std::cout << " CAUTION: nume & numt differ" << std::endl;
     }
-    if(numt > nume) {
-        numt = nume;
+    if(numt > E.size() - 1) {
+        numt = E.size() - 1;
     }
 
     // HEPS.TAB is the table of the dielectric constant for solid Si,
