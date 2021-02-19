@@ -1,5 +1,4 @@
 #include <random>
-#include <stack>
 
 #include <Math/Vector3D.h>
 #include <TH1.h>
@@ -42,7 +41,7 @@ namespace allpix {
     /**
      * @brief Particle
      */
-    class particle {
+    class Particle {
     public:
         /**
          * Constructor for new particle
@@ -51,7 +50,7 @@ namespace allpix {
          * @param dir           Direction of motion
          * @param particle_type Type of particle
          */
-        particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType type)
+        Particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType type)
             : position_start_(pos), position_end_(std::move(pos)), direction_(std::move(dir)), energy_(energy), type_(type) {
             update();
         };
@@ -59,7 +58,7 @@ namespace allpix {
         /**
          * Default constructor
          */
-        particle() = default;
+        Particle() = default;
 
         ROOT::Math::XYZVector position() const { return position_end_; }
         void setPosition(ROOT::Math::XYZVector pos) { position_end_ = pos; }
@@ -117,12 +116,12 @@ namespace allpix {
     /**
      * @brief Deposited clusters of electron-hole pairs generated via ionization
      */
-    class cluster {
+    class Cluster {
     public:
         /**
          * @ brief default constructor
          */
-        cluster() = default;
+        Cluster() = default;
 
         /**
          * Constructor for e/h pair cluster
@@ -130,7 +129,7 @@ namespace allpix {
          * @param pos      Position of the cluster in local coordinates
          * @param energy   Energy of the generating particle
          */
-        cluster(int eh_pairs, ROOT::Math::XYZVector pos, double energy) : neh(eh_pairs), position(pos), E(energy){};
+        Cluster(int eh_pairs, ROOT::Math::XYZVector pos, double energy) : neh(eh_pairs), position(pos), E(energy){};
         int neh;
         ROOT::Math::XYZVector position;
         double E; // [eV] generating particle
@@ -142,7 +141,7 @@ namespace allpix {
         DepositionBichsel() = default;
 
         void init();
-        std::vector<cluster> stepping(const particle& init, unsigned iev, double depth, unsigned& ndelta);
+        std::vector<Cluster> stepping(const Particle& init, unsigned iev, double depth, unsigned& ndelta);
 
         void setRandomEngine(std::ranlux24* generator) { random_engine_ = generator; }
         std::ranlux24& getRandomEngine() { return *random_engine_; }

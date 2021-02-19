@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <stack>
 
 using namespace allpix;
 
@@ -84,13 +85,13 @@ void DepositionBichsel::init() {
     fast = FAST;
 }
 
-std::vector<cluster> DepositionBichsel::stepping(const particle& init, unsigned iev, double depth, unsigned& ndelta) {
+std::vector<Cluster> DepositionBichsel::stepping(const Particle& init, unsigned iev, double depth, unsigned& ndelta) {
 
     MazziottaIonizer ionizer(random_engine_);
     std::uniform_real_distribution<double> unirnd(0, 1);
 
-    std::vector<cluster> clusters;
-    std::stack<particle> deltas;
+    std::vector<Cluster> clusters;
+    std::stack<Particle> deltas;
     deltas.push(init);
     // Statistics:
     unsigned nsteps = 0; // number of steps for full event

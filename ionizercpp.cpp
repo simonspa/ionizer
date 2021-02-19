@@ -290,7 +290,7 @@ int main(int argc, char* argv[]) {
         double xm = pitch * (unirnd(rgen) - 0.5); // [mu] -p/2..p/2 at track mid
         ROOT::Math::XYZVector pos((xm - 0.5 * width) * 1e-4, 0, 0);
         ROOT::Math::XYZVector dir(sin(turn), 0, cos(turn));
-        particle initial(Ekin0, pos, dir, default_particle_type); // beam particle is first "delta"
+        Particle initial(Ekin0, pos, dir, default_particle_type); // beam particle is first "delta"
         // E : Ekin0; // [MeV]
         // x : entry point is left;
         // y :  [cm]
