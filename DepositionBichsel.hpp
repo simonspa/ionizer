@@ -5,11 +5,18 @@
 #include <TH1.h>
 #include <TProfile.h>
 
-namespace ionizer {
+// CONFIGURATION
+#define TEMPERATURE 298
+#define PARTICLE_TYPE ParticleType::ELECTRON
+#define DEPTH 285
+#define EKIN 5000
+#define DELTA_ENERGY_CUT 9
+#define FAST true
+
+namespace allpix {
 
 #define HEPS_ENTRIES 1251
 #define N2 64
-    using table = std::array<double, HEPS_ENTRIES>;
 
     /**
      * @brief Type of particles
@@ -143,12 +150,13 @@ namespace ionizer {
     private:
         std::ranlux24* random_engine_;
 
-        ionizer::table E, dE;
-        ionizer::table dielectric_const_real;
-        ionizer::table dielectric_const_imag;
-        ionizer::table dfdE;
-        ionizer::table oscillator_strength_ae;
-        ionizer::table xkmn;
+        using table = std::array<double, HEPS_ENTRIES>;
+        table E, dE;
+        table dielectric_const_real;
+        table dielectric_const_imag;
+        table dfdE;
+        table oscillator_strength_ae;
+        table xkmn;
 
         // FIXME possible config parameters
         bool fast;
@@ -161,7 +169,7 @@ namespace ionizer {
         const bool ldb = false;
 
         // Constants
-        const double electron_mass = 0.51099906;             // e mass [MeV]
+        const double electron_mass = 0.51099906; // e mass [MeV]
         const double rydberg_constant = 13.6056981;
         const double fac = 8.0 * M_PI * rydberg_constant * rydberg_constant * pow(0.529177e-8, 2) / electron_mass / 1e6;
 
@@ -209,5 +217,8 @@ namespace ionizer {
          * Im(-1/epsilon) from equations in the Appendix of Emerson et al., Phys Rev B7, 1798 (1973) (also see CCS-63)
          */
         void read_emerctab();
+
+        double gena1();
+        double gena2();
     };
-} // namespace ionizer
+} // namespace allpix

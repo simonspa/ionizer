@@ -11,7 +11,7 @@ ionizer: ionizer.cc Makefile
 	@echo 'done: ionizer'
 
 ionizercpp: ionizercpp.cpp Makefile
-	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o ionizercpp  ionizercpp.cpp MazziottaIonizer.cpp $(ROOTLIBS)
+	g++ -O2 -Wall -Wextra $(ROOTCFLAGS) -o ionizercpp  ionizercpp.cpp DepositionBichsel.cpp MazziottaIonizer.cpp $(ROOTLIBS)
 	@echo 'done: ionizercpp'
 
 mfp: mfp.cc Makefile

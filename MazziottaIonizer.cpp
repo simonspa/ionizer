@@ -1,6 +1,6 @@
 #include "MazziottaIonizer.hpp"
 
-using namespace ionizer;
+using namespace allpix;
 
 MazziottaIonizer::MazziottaIonizer(std::ranlux24* random_engine) : random_engine_(random_engine) {
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =

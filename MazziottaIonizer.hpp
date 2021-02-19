@@ -3,7 +3,7 @@
 
 #include <Math/Vector3D.h>
 
-namespace ionizer {
+namespace allpix {
 
     class MazziottaIonizer {
     public:
@@ -44,4 +44,4 @@ namespace ionizer {
         const std::array<double, 14> PL1{{0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.15, 0.28, 0.42, 0.56, 0.08, 0.08}};
         const std::array<double, 14> PK{{0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.92, 0.92}};
     };
-} // namespace ionizer
+} // namespace allpix
