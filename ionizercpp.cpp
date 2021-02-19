@@ -67,33 +67,6 @@
 
 using namespace ionizer;
 
-class delta {
-public:
-    delta(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, unsigned particle_type) : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type)
-    {};
-    delta() = default;
-    double E; // [MeV]
-    ROOT::Math::XYZVector position;
-    ROOT::Math::XYZVector direction;
-    unsigned type; // particle type
-    double mass() {
-        if(      type == 1 ) return 938.2723; // proton
-        else if( type == 2 ) return 139.578; // pion
-        else if( type == 3 ) return 493.67; // K
-        else if( type == 5 ) return 105.65932; // mu
-        else return 0.51099906; // e mass [MeV]
-    };
-};
-
-class cluster {
-public:
-    cluster() = default;
-    cluster(int eh_pairs, ROOT::Math::XYZVector pos, double energy) : neh(eh_pairs), position(pos), E(energy) {};
-    int neh;
-    ROOT::Math::XYZVector position;
-    double E; // [eV] generating particle
-};
-
 DepositionBichsel::DepositionBichsel() {
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // SHELL INITIALIZATION
@@ -560,7 +533,7 @@ int main( int argc, char* argv[] )
     for( unsigned iev = 0; iev < nev; ++ iev ) {
 
         std::cout << iev << std::endl;
-        std::stack <delta> deltas;
+        std::stack <particle> deltas;
 
         // put track on std::stack:
         double xm = pitch * ( unirnd(rgen) - 0.5 ); // [mu] -p/2..p/2 at track mid
@@ -584,7 +557,7 @@ int main( int argc, char* argv[] )
         while( ! deltas.empty() ) {
             double Ekprev = 9e9; // update flag for next delta
 
-            delta t = deltas.top();
+            auto t = deltas.top();
             deltas.pop();
 
             unsigned nlast = nume;
@@ -747,10 +720,7 @@ int main( int argc, char* argv[] )
                         double S0EL = 2*FF / ( gn * ( 2 + gn ) );
                         // elastic total cross section  [cm2/atom]
                         xlel = atnu*S0EL; // ATNU = N_A * density / A = atoms/cm3
-
-                    }
-                    else { //  OTHER PARTICLES
-
+                    } else { //  OTHER PARTICLES
                         double getot = t.E + t.mass();
                         xlel = std::min( 2232.0 * radiation_length * pow( pmom*pmom / (getot*zi), 2 ), 10.0*radiation_length );
                         // units ?
