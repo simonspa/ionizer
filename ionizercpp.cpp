@@ -351,9 +351,10 @@ int main( int argc, char* argv[] )
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ DIELECTRIC CONSTANTS
 
-    std::array<ionizer::table, 3> ep;
+    ionizer::table dielectric_const_real;
+    ionizer::table dielectric_const_imag;
     ionizer::table dfdE;
-    read_hepstab(n2, E, ep[1], ep[2], dfdE);
+    read_hepstab(n2, E, dielectric_const_real, dielectric_const_imag, dfdE);
 
     //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
@@ -476,18 +477,18 @@ int main( int argc, char* argv[] )
                         sig[1][j] = E[j] * dfdE[j] * log( Q1 / qmin );
                         // longitudinal excitation, Eq. (46) in Fano; Eq. (2.9) in RMP
 
-                        double epbe = 1 - betasq * ep[1][j]; // Fano Eq. (47)
+                        double epbe = 1 - betasq * dielectric_const_real[j]; // Fano Eq. (47)
                         if( epbe < 1e-20 ) epbe = 1E-20;
 
                         double sgg = E[j] * dfdE[j] * (-0.5) *
-                        log( epbe*epbe + pow( betasq * ep[2][j], 2 ) );
+                        log( epbe*epbe + pow( betasq * dielectric_const_imag[j], 2 ) );
 
-                        double thet = atan( ep[2][j] * betasq / epbe );
+                        double thet = atan( dielectric_const_imag[j] * betasq / epbe );
                         if( thet < 0 ) thet = thet + M_PI; // plausible-otherwise I"d have a jump
                         // Fano says [p 21]: "arctan approaches pi for betasq*eps1 > 1 "
 
                         double sgh = 0.0092456 * E[j]*E[j] * thet *
-                        ( betasq - ep[1][j] / ( pow( ep[1][j], 2 ) + pow( ep[2][j], 2 ) ) );
+                        ( betasq - dielectric_const_real[j] / ( pow( dielectric_const_real[j], 2 ) + pow( dielectric_const_imag[j], 2 ) ) );
 
                         sig[2][j] = sgg;
                         sig[3][j] = sgh; // small, negative
