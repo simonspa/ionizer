@@ -5,17 +5,38 @@
 
 namespace ionizer {
 
+    /**
+     * @brief Type of particles
+     */
+    enum class ParticleType {
+        NONE = 0, ///< No particle
+        PROTON,
+        PION,
+        KAON,
+        ELECTRON,
+        MUON,
+        HELIUM,
+        LITHIUM,
+        CARBON,
+        IRON,
+    };
+
+    inline std::ostream& operator<<(std::ostream& os, const ParticleType type) {
+        os << static_cast<std::underlying_type<ParticleType>::type>(type);
+        return os;
+    }
+
     class particle {
     public:
-        particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, unsigned particle_type) : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type)
+        particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType particle_type) : E(energy), position(std::move(pos)), direction(std::move(dir)), type(particle_type)
         {};
         particle() = default;
         double E; // [MeV]
         ROOT::Math::XYZVector position;
         ROOT::Math::XYZVector direction;
-        unsigned type; // particle type
+        ParticleType type; // particle type
         double mass() {
-            return type < 5 ? mass_.at(type) : 0;
+            return mass_.at(static_cast<std::underlying_type<ParticleType>::type>(type));
         };
 
     private:

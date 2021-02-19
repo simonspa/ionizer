@@ -222,8 +222,7 @@ int main( int argc, char* argv[] )
     //double explicit_delta_energy_cut_keV = 2; Dec 2019
     double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
 
-    // p=1, pi=2, K=3, e=4, mu=5, He=6, Li=7, C=8, Fe=9
-    unsigned default_particle_type = 4; // e
+    auto default_particle_type = ParticleType::ELECTRON;
 
     double temp = 298; // [K]
 
@@ -566,7 +565,7 @@ int main( int argc, char* argv[] )
                     double betasq = bg*bg / ( 1 + bg*bg );
                     double Emax = t.mass() * ( gam*gam - 1 ) / ( 0.5*t.mass()/electron_mass_mev + 0.5*electron_mass_mev/t.mass() + gam );
                     // Emax=maximum energy loss, see Uehling, also Sternheimer & Peierls Eq.(53)
-                    if(t.type == 4) {
+                    if(t.type == ParticleType::ELECTRON) {
                         Emax = 0.5*t.E;
                     }
                     // std::maximum energy loss for incident electrons
@@ -631,7 +630,7 @@ int main( int argc, char* argv[] )
                         //if( E[j] > 1838 ) sig[2][j] = 0; // TEST, 7% better resolution
 
                         double uef = 1 - E[j] * bemx;
-                        if(t.type == 4) {
+                        if(t.type == ParticleType::ELECTRON) {
                             uef = 1 + pow( E[j] / ( EkeV - E[j] ), 2 ) +
                             pow( (gam-1) / gam * E[j]/EkeV, 2 ) -
                             ( 2*gam-1 ) * E[j] / ( gam*gam * ( EkeV - E[j] ) );
@@ -696,7 +695,7 @@ int main( int argc, char* argv[] )
 
                     // elastic:
 
-                    if(t.type == 4) { // ELECTRONS
+                    if(t.type == ParticleType::ELECTRON) { // ELECTRONS
 
                         //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / EkeV; // Mazziotta
                         gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (pmom*pmom)*1e-6; // Moliere
@@ -862,7 +861,7 @@ int main( int argc, char* argv[] )
                             // put delta on std::stack:
                             // E = Eeh*1E-6; // Ekin [MeV]
                             // particle_type = 4; // e
-                            deltas.emplace(Eeh*1E-6, t.position, delta_direction, 4);
+                            deltas.emplace(Eeh*1E-6, t.position, delta_direction, ParticleType::ELECTRON);
 
                             ++ndelta;
 
@@ -941,7 +940,7 @@ int main( int argc, char* argv[] )
                         break;
                     }
 
-                    if(t.type == 4) { // electrons, update elastic cross section at new t.E
+                    if(t.type == ParticleType::ELECTRON) { // electrons, update elastic cross section at new t.E
 
                         //gn = 2*2.61 * pow( atomic_number, 2.0/3.0 ) / (t.E*1E6); // Mazziotta
                         double pmom = sqrt( t.E * ( t.E + 2*t.mass() ) ); // [MeV/c] 2nd binomial
