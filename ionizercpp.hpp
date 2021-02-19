@@ -43,7 +43,7 @@ namespace ionizer {
          * @param particle_type Type of particle
          */
         particle(double energy, ROOT::Math::XYZVector pos, ROOT::Math::XYZVector dir, ParticleType type)
-            : position_start_(pos), position_end_(std::move(pos)), direction(std::move(dir)), energy_(energy), type_(type) {
+            : position_start_(pos), position_end_(std::move(pos)), direction_(std::move(dir)), energy_(energy), type_(type) {
             update();
         };
 
@@ -51,10 +51,12 @@ namespace ionizer {
          * Default constructor
          */
         particle() = default;
-        ROOT::Math::XYZVector direction;
 
         ROOT::Math::XYZVector position() const { return position_end_; }
         void setPosition(ROOT::Math::XYZVector pos) { position_end_ = pos; }
+
+        ROOT::Math::XYZVector direction() const { return direction_; }
+        void setDirection(ROOT::Math::XYZVector dir) { direction_ = dir; }
 
         double E() const { return energy_; }
         void setE(double energy) {
@@ -77,6 +79,7 @@ namespace ionizer {
     private:
         ROOT::Math::XYZVector position_start_;
         ROOT::Math::XYZVector position_end_;
+        ROOT::Math::XYZVector direction_;
 
         double energy_;     // [MeV]
         ParticleType type_; // particle type

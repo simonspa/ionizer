@@ -428,8 +428,8 @@ int main(int argc, char* argv[]) {
             ionizer::table totsig;
 
             std::cout << "  delta " << t.E() * 1e3 << " keV"
-                      << ", cost " << t.direction.Z() << ", u " << t.direction.X() << ", v " << t.direction.Y() << ", z "
-                      << t.position().Z() * 1e4;
+                      << ", cost " << t.direction().Z() << ", u " << t.direction().X() << ", v " << t.direction().Y()
+                      << ", z " << t.position().Z() * 1e4;
 
             while(1) { // steps
 
@@ -582,7 +582,7 @@ int main(int argc, char* argv[]) {
                 hstep5.Fill(step * 1e4);
                 hstep0.Fill(step * 1e4);
 
-                double pos_z = t.position().Z() + step * t.direction.Z();
+                double pos_z = t.position().Z() + step * t.direction().Z();
 
                 if(ldb && t.E() < 1)
                     std::cout << "step " << step * 1e4 << ", z " << pos_z * 1e4 << std::endl;
@@ -593,7 +593,7 @@ int main(int argc, char* argv[]) {
                     break; // exit back or front
                 }
 
-                t.setPosition(t.position() + step * t.direction);
+                t.setPosition(t.position() + step * t.direction());
 
                 if(fabs(t.position().Y()) > 0.0200)
                     break; // save time
@@ -678,9 +678,9 @@ int main(int argc, char* argv[]) {
                     htet.Fill(180 / M_PI * asin(sint)); // peak at 90, tail to 45, elastic forward
 
                     // transform into detector system:
-                    double cz = t.direction.Z(); // delta direction
+                    double cz = t.direction().Z(); // delta direction
                     double sz = sqrt(1 - cz * cz);
-                    double phif = atan2(t.direction.Y(), t.direction.X());
+                    double phif = atan2(t.direction().Y(), t.direction().X());
                     double sf = sin(phif);
                     double cf = cos(phif);
                     ROOT::Math::XYZVector delta_direction(cz * cf * din[0] - sf * din[1] + sz * cf * din[2],
@@ -818,14 +818,14 @@ int main(int argc, char* argv[]) {
 
                     // change direction of delta VECT:
 
-                    double cz = t.direction.Z(); // delta direction
+                    double cz = t.direction().Z(); // delta direction
                     double sz = sqrt(1.0 - cz * cz);
-                    double phif = atan2(t.direction.Y(), t.direction.X());
+                    double phif = atan2(t.direction().Y(), t.direction().X());
                     double sf = sin(phif);
                     double cf = cos(phif);
-                    t.direction = ROOT::Math::XYZVector(cz * cf * din[0] - sf * din[1] + sz * cf * din[2],
-                                                        cz * sf * din[0] + cf * din[1] + sz * sf * din[2],
-                                                        -sz * din[0] + cz * din[2]);
+                    t.setDirection(ROOT::Math::XYZVector(cz * cf * din[0] - sf * din[1] + sz * cf * din[2],
+                                                         cz * sf * din[0] + cf * din[1] + sz * sf * din[2],
+                                                         -sz * din[0] + cz * din[2]));
                 } // elastic
 
             } // while steps
