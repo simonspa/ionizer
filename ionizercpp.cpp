@@ -49,6 +49,7 @@
 // ionizer.hist
 
 #include "MazziottaIonizer.hpp"
+#include "ionizercpp.hpp"
 
 #include <cstdlib> // atoi
 #include <iostream> // std::cout
