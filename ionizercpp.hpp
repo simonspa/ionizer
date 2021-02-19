@@ -2,6 +2,8 @@
 #include <stack>
 
 #include <Math/Vector3D.h>
+#include <TH1.h>
+#include <TProfile.h>
 
 namespace ionizer {
 
@@ -127,42 +129,89 @@ namespace ionizer {
         double E; // [eV] generating particle
     };
 
-    /**
-     * Reading HEPS.TAB data file
-     *
-     * HEPS.TAB is the table of the dielectric constant for solid Si, epsilon = ep(1,j) + i*ep(2,j), as a function of energy
-     * loss E(j), section II.E in RMP, and rim is Im(-1/epsilon), Eq. (2.17), p.668. Print statements are included to check
-     * that the file is read correctly.
-     *
-     * @param n2   [description]
-     * @param E    Energy levels
-     * @param ep_1 Array of real parts of complex dielectric constant, split by energy levels
-     * @param ep_2 Array of imaginary parts of complex dielectric constant, split by energy levels
-     * @param dfdE [description]
-     */
-    void read_hepstab(int n2, ionizer::table E, ionizer::table& ep_1, ionizer::table& ep_2, ionizer::table& dfdE);
+    class DepositionBichsel {
 
-    /**
-     * Reading MACOM.TAB data file
-     *
-     * MACOM.TAB is the table of the integrals over momentum transfer K of the generalized oscillator strength, summed for
-     * all shells, i.e. the A(E) of Eq. (2.11), p. 667 of RMP
-     *
-     * @param n2   [description]
-     * @param nume Number of energy levels
-     * @param sig  Array of integrals of generalized oscillator strength, split by energy level
-     */
-    void read_macomtab(int n2, unsigned int nume, ionizer::table& sig);
+    public:
+        DepositionBichsel() = default;
 
-    /**
-     * Reading EMERC.TAB data file
-     *
-     * EMERC.TAB is the table of the integral over K of generalized oscillator strength for E < 11.9 eV with Im(-1/epsilon)
-     * from equations in the Appendix of Emerson et al., Phys Rev B7, 1798 (1973) (also see CCS-63)
-     *
-     * @param sig  Array of integrals of generalized oscillator strength, split by energy level
-     * @param xkmn [description]
-     */
-    void read_emerctab(ionizer::table& sig, ionizer::table& xkmn);
+        void init();
+        std::vector<cluster> stepping(const particle& init, unsigned iev, double depth, unsigned& ndelta);
 
+        void setRandomEngine(std::ranlux24* generator) { random_engine_ = generator; }
+        std::ranlux24& getRandomEngine() { return *random_engine_; }
+
+    private:
+        std::ranlux24* random_engine_;
+
+        ionizer::table E, dE;
+        ionizer::table dielectric_const_real;
+        ionizer::table dielectric_const_imag;
+        ionizer::table dfdE;
+        ionizer::table oscillator_strength_ae;
+        ionizer::table xkmn;
+
+        std::array<ionizer::table, 6> sig;
+
+        // FIXME possible config parameters
+        const bool fast = 1; // default is fast
+        // delta ray range: 1 um at 10 keV (Mazziotta 2004)
+        // double explicit_delta_energy_cut_keV = 2; Dec 2019
+        const double explicit_delta_energy_cut_keV = 9; // Apr 2020, faster, no effect on resolution
+        ParticleType default_particle_type;
+        double temperature; // [K]
+
+        // FIXME to be removed
+        const bool ldb = false;
+
+        // Constants
+        const double electron_mass_mev = 0.51099906;             // e mass [MeV]
+        const double electron_mass_ev = 1e6 * electron_mass_mev; // me [eV]
+        const double rydberg_constant = 13.6056981;
+        const double fac = 8.0 * M_PI * rydberg_constant * rydberg_constant * pow(0.529177e-8, 2) / electron_mass_ev;
+
+        // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+        // silicon:
+
+        const double atomic_number = 14.0;                          // ZA = atomic number of absorber, Si
+        const double atomic_weight = 28.086;                        // AW = atomic weight of absorber
+        const double density = 2.329;                               // rho= density of absorber material
+        const double radiation_length = 9.36;                       // [cm]
+        const double atnu = 6.0221367e23 * density / atomic_weight; // atnu = # of atoms per cm**3
+
+        const double eom0 = 0.063; // phonons
+        const double aaa = 5.2;    // Alig 1980
+
+        double energy_gap;
+        double energy_threshold;
+
+        // Histograms:
+        TProfile *elvse, *invse;
+        TH1I *hstep5, *hstep0, *hzz, *hde0, *hde1, *hde2, *hdel, *htet, *hnprim, *hlogE, *hlogn, *hscat, *hncl, *htde,
+            *htde0, *htde1, *hteh, *hq0, *hrms;
+
+        /**
+         * Reading HEPS.TAB data file
+         *
+         * HEPS.TAB is the table of the dielectric constant for solid Si, epsilon = ep(1,j) + i*ep(2,j), as a function of
+         * energy loss E(j), section II.E in RMP, and rim is Im(-1/epsilon), Eq. (2.17), p.668. Print statements are included
+         * to check that the file is read correctly.
+         */
+        void read_hepstab();
+
+        /**
+         * Reading MACOM.TAB data file
+         *
+         * MACOM.TAB is the table of the integrals over momentum transfer K of the generalized oscillator strength, summed
+         * for all shells, i.e. the A(E) of Eq. (2.11), p. 667 of RMP
+         */
+        void read_macomtab();
+
+        /**
+         * Reading EMERC.TAB data file
+         *
+         * EMERC.TAB is the table of the integral over K of generalized oscillator strength for E < 11.9 eV with
+         * Im(-1/epsilon) from equations in the Appendix of Emerson et al., Phys Rev B7, 1798 (1973) (also see CCS-63)
+         */
+        void read_emerctab();
+    };
 } // namespace ionizer
