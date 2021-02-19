@@ -710,7 +710,7 @@ int main( int argc, char* argv[] )
                     // GENERATE PRIMARY e-h:
                     std::stack <double> veh;
                     if(energy_gamma > energy_threshold) {
-                        veh = ionizer.shells(energy_gamma);
+                        veh = ionizer.getIonization(energy_gamma);
                     }
 
                     hnprim.Fill(veh.size());

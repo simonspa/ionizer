@@ -64,7 +64,7 @@ double MazziottaIonizer::get_uniform_prn() {
    return uniform_dist(*random_engine_);
 }
 
-std::stack<double> MazziottaIonizer::shells(double energy_gamma)
+std::stack<double> MazziottaIonizer::getIonization(double energy_gamma)
 {
 
     // INPUT:

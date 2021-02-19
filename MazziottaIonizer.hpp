@@ -64,7 +64,7 @@ namespace ionizer {
     class MazziottaIonizer {
     public:
         MazziottaIonizer(std::ranlux24* random_engine);
-        std::stack <double> shells(double energy_gamma);
+        std::stack <double> getIonization(double energy_gamma);
 
     private:
         void transition(double energy_valence, double energy_auger, std::stack <double> &veh);
