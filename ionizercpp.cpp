@@ -67,6 +67,7 @@
 
 using namespace ionizer;
 
+
 DepositionBichsel::DepositionBichsel() {
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // SHELL INITIALIZATION
@@ -122,9 +123,9 @@ DepositionBichsel::DepositionBichsel() {
 }
 
 // forward declarations:
-void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], double (&ep_2)[], double (&dfdE)[]);
-void read_macomtab(int n2, unsigned int nume, double (&sig)[]);
-void read_emerctab(double (&sig)[], double (&xkmn)[]);
+void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE);
+void read_macomtab(int n2, unsigned int nume, ionizer::table &sig);
+void read_emerctab(ionizer::table &sig, double (&xkmn)[]);
 
 double gena1();
 double gena2();
@@ -392,13 +393,9 @@ int main( int argc, char* argv[] )
 
     // EMIN is chosen to give an E-value exactly at the K-shell edge, 1839 eV
 
-    const unsigned lime = 1251; // see HEPS.TAB
-    unsigned nume = lime-1;
-
-    double E[lime], dE[lime];
-
+    unsigned nume = HEPS_ENTRIES-1;
+    ionizer::table E, dE;
     E[1] = Emin;
-
     for( unsigned j = 1; j < nume; ++j ) {
         E[j+1] = E[j] * um; // must agree with heps.tab
         dE[j]  = E[j+1] - E[j];
@@ -412,15 +409,14 @@ int main( int argc, char* argv[] )
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ DIELECTRIC CONSTANTS
 
-    double ep[3][lime];
-    double dfdE[lime];
-
+    std::array<ionizer::table, 3> ep;
+    ionizer::table dfdE;
     read_hepstab(n2, nume, E, ep[1], ep[2], dfdE);
 
     //= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
     // READ INTEGRAL OVER MOMENTUM TRANSFER OF THE GENERALIZED OSCILLATOR STRENGTH
 
-    double sig[7][lime];
+    std::array<ionizer::table, 7> sig;
     read_macomtab(n2, nume, sig[6]);
 
     // = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
@@ -431,9 +427,7 @@ int main( int argc, char* argv[] )
 
     // EGAP = GAP ENERGY IN eV
     // EMIN = THRESHOLD ENERGY (ALIG ET AL., PRB22 (1980), 5565)
-
     double energy_gap = 1.17 - 4.73e-4 * temp*temp / (636+temp);
-
     double energy_threshold = 1.5*energy_gap; // energy conservation
 
     double eom0 = 0.063; // phonons
@@ -480,7 +474,7 @@ int main( int argc, char* argv[] )
             double xm0 = 1;
             double xlel = 1;
             double gn = 1;
-            double totsig[lime];
+            ionizer::table totsig;
 
             std::cout << "  delta " << t.E*1e3 << " keV" << ", cost " << t.direction.Z() << ", u " << t.direction.X() << ", v " << t.direction.Y() << ", z " << t.position.Z()*1e4;
 
@@ -519,7 +513,7 @@ int main( int argc, char* argv[] )
                     tsig[i] = 0;
 
                     double stpw = 0;
-                    double H[lime];
+                    ionizer::table H;
 
                     for( unsigned j = 1; j <= nume; ++j ) {
 
@@ -1119,7 +1113,7 @@ int main( int argc, char* argv[] )
 
 } // main
 
-void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], double (&ep_2)[], double (&dfdE)[]) {
+void read_hepstab(int n2, unsigned int nume, ionizer::table E, ionizer::table &ep_1, ionizer::table &ep_2, ionizer::table &dfdE) {
     std::ifstream heps( "HEPS.TAB" );
     if(heps.bad() || !heps.is_open()) {
         std::cout << "Error opening HEPS.TAB" << std::endl;
@@ -1173,7 +1167,7 @@ void read_hepstab(int n2, unsigned int nume, double E[], double (&ep_1)[], doubl
     // DP: fixed in HEPS.TAB
 }
 
-void read_macomtab(int n2, unsigned int nume, double (&sig)[]) {
+void read_macomtab(int n2, unsigned int nume, ionizer::table &sig) {
     std::ifstream macom( "MACOM.TAB" );
     if(macom.bad() || !macom.is_open()) {
         std::cout << "Error opening MACOM.TAB" << std::endl;
@@ -1210,7 +1204,7 @@ void read_macomtab(int n2, unsigned int nume, double (&sig)[]) {
     std::cout << "read " << jt << " data lines from MACOM.TAB" << std::endl;
 }
 
-void read_emerctab(double (&sig)[], double (&xkmn)[]) {
+void read_emerctab(ionizer::table &sig, double (&xkmn)[]) {
     std::ifstream emerc( "EMERC.TAB" );
     if(emerc.bad() || !emerc.is_open()) {
         std::cout << "Error opening EMERC.TAB" << std::endl;

@@ -5,6 +5,9 @@
 
 namespace ionizer {
 
+    #define HEPS_ENTRIES 1251
+    using table = std::array<double, HEPS_ENTRIES>;
+
     /**
      * @brief Type of particles
      */
